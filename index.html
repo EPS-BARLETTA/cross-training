@@ -92,6 +92,9 @@
         </header>
 
         <div class="skill-builder" id="skill-builder"></div>
+        <div class="skill-toolbar">
+          <button class="btn ghost" id="skill-new-session" type="button">Nouvelle séance Skill</button>
+        </div>
 
         <div class="skill-settings">
           <label>Durée totale
@@ -107,9 +110,10 @@
             <p id="skill-practice-timer" class="timer-value">00:00</p>
             <p id="skill-block-counter" class="hint">Bloc 0/0</p>
             <div class="timer-controls">
-              <button class="btn primary" id="skill-start">Start</button>
+              <button class="btn primary" id="skill-start" type="button">Démarrer bloc</button>
               <button class="btn secondary" id="skill-pause">Pause</button>
-              <button class="btn ghost" id="skill-reset">Reset</button>
+              <button class="btn secondary" id="skill-end-block">Bloc terminé</button>
+              <button class="btn ghost" id="skill-reset">Reset chrono</button>
             </div>
             <p id="skill-timer-status" class="hint"></p>
           </div>

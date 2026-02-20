@@ -1,10 +1,10 @@
 'use strict';
 
-const APP_NAME = 'CrossTraining';
 const STORAGE_KEY = 'CT_APP_STATE_V3';
 const STORAGE_VERSION = 3;
 const TRAINING_SECONDS = 60;
 const BLOCK_DURATION_SECONDS = 120;
+const ALLOWED_SKILL_DURATIONS = [6, 10, 16, 20];
 const PLACEHOLDER_IMG =
   "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='320' height='200'><rect width='320' height='200' rx='24' fill='%23e2e8f0'/><text x='50%' y='50%' font-family='Inter,Arial' font-size='18' fill='%2394a3b8' text-anchor='middle' dominant-baseline='middle'>Visuel manquant</text></svg>";
 
@@ -192,6 +192,7 @@ function cacheElements() {
   ui.skillTimerStatus = document.getElementById('skill-timer-status');
   ui.skillStart = document.getElementById('skill-start');
   ui.skillPause = document.getElementById('skill-pause');
+  ui.skillEndBlock = document.getElementById('skill-end-block');
   ui.skillReset = document.getElementById('skill-reset');
   ui.skillResultsGrid = document.getElementById('skill-results-grid');
   ui.skillCourseOk = document.getElementById('skill-course-ok');
@@ -205,6 +206,7 @@ function cacheElements() {
   ui.exportBtn = document.getElementById('export-btn');
   ui.importInput = document.getElementById('import-input');
   ui.resetBtn = document.getElementById('reset-btn');
+  ui.skillNewSession = document.getElementById('skill-new-session');
   ui.modal = document.getElementById('modal');
   ui.modalBody = document.getElementById('modal-body');
   ui.modalClose = document.getElementById('modal-close');
@@ -239,17 +241,22 @@ function bindActions() {
   ui.trainingSave.addEventListener('click', saveTrainingScore);
   ui.trainingQrBtn.addEventListener('click', handleTrainingQr);
 
-  ui.skillStart.addEventListener('click', startSkillPractice);
-  ui.skillPause.addEventListener('click', () => pauseSkillPractice(true));
-  ui.skillReset.addEventListener('click', () => resetSkillPractice(true));
-  ui.skillDuration.addEventListener('change', handleSkillDurationChange);
+  ui.skillStart?.addEventListener('click', startSkillPractice);
+  ui.skillPause?.addEventListener('click', () => pauseSkillPractice(true));
+  ui.skillEndBlock?.addEventListener('click', () => completeSkillPractice(false));
+  ui.skillReset?.addEventListener('click', () => resetSkillPractice(true));
+  ui.skillDuration?.addEventListener('change', handleSkillDurationChange);
   ui.skillCourseOk.addEventListener('change', () => {
     state.skill.courseOk = ui.skillCourseOk.checked;
     persistState(false);
   });
-  ui.skillValidate.addEventListener('click', validateSkillBlock);
-  ui.skillResetBlock.addEventListener('click', () => resetSkillInputs(true));
-  ui.skillQrBtn.addEventListener('click', handleSkillQr);
+  ui.skillValidate?.addEventListener('click', validateSkillBlock);
+  ui.skillResetBlock?.addEventListener('click', () => resetSkillInputs(true));
+  ui.skillQrBtn?.addEventListener('click', handleSkillQr);
+  ui.skillNewSession?.addEventListener('click', () => {
+    resetSkillSession('Nouvelle séance Skill prête.');
+    persistState();
+  });
 
   ui.exportBtn.addEventListener('click', exportState);
   ui.importInput.addEventListener('change', importStateFromFile);
@@ -494,7 +501,8 @@ function handleTrainingQr() {
 }
 
 function buildTrainingPayload() {
-  if (!isIdentityComplete()) {
+  const payload = buildBasePayload('training', 'T');
+  if (!payload) {
     ui.trainingQrSize.textContent = 'Complète prénom, nom, classe.';
     return null;
   }
@@ -503,16 +511,14 @@ function buildTrainingPayload() {
     ui.trainingQrSize.textContent = 'Enregistre au moins un test.';
     return null;
   }
-  const participant = buildParticipantBase('training');
-  participant.ct_tr_timer = TRAINING_SECONDS;
-  if (state.student.observer) participant.ct_observer = state.student.observer;
+  payload.ct_tr_timer = TRAINING_SECONDS;
   entries.forEach(([id, info]) => {
     const slug = slugify(id);
-    if (info.bestN1 != null) participant[`ct_tr_${slug}_n1`] = info.bestN1;
-    if (info.bestN2 != null) participant[`ct_tr_${slug}_n2`] = info.bestN2;
-    if (info.lastAt) participant[`ct_tr_${slug}_last`] = info.lastAt;
+    if (info.bestN1 != null) payload[`ct_tr_${slug}_n1`] = info.bestN1;
+    if (info.bestN2 != null) payload[`ct_tr_${slug}_n2`] = info.bestN2;
+    if (info.lastAt) payload[`ct_tr_${slug}_last`] = info.lastAt;
   });
-  return buildEnvelope('training', participant);
+  return payload;
 }
 
 // ------------------ Skill ------------------
@@ -604,10 +610,11 @@ function renderSkillInputs() {
   });
   ui.skillCourseOk.checked = state.skill.courseOk;
   renderSkillStatus();
+  updateSkillControlState();
 }
 
 function handleSkillDurationChange() {
-  state.skill.duration = Number(ui.skillDuration.value) || 10;
+  state.skill.duration = sanitizeSkillDuration(Number(ui.skillDuration.value) || 10);
   resetSkillSession('Durée modifiée, séance réinitialisée.');
   persistState(false);
 }
@@ -618,21 +625,31 @@ function startSkillPractice() {
     return;
   }
   ensureSkillSession();
+  const session = state.skill.session;
+  if (!session) return;
+  if (session.currentBlock > session.totalBlocks) {
+    ui.skillTimerStatus.textContent = 'Séance terminée. Lance une nouvelle séance.';
+    return;
+  }
+  if (session.pendingBlock) {
+    ui.skillTimerStatus.textContent = 'Valide ou réinitialise le bloc avant de relancer.';
+    return;
+  }
   if (skillPracticeTimer.running) return;
-  if (skillPracticeTimer.seconds >= BLOCK_DURATION_SECONDS) skillPracticeTimer.seconds = 0;
   skillPracticeTimer.running = true;
-  ui.skillTimerStatus.textContent = 'Pratique en cours…';
+  if (skillPracticeTimer.seconds === 0) {
+    ui.skillTimerStatus.textContent = `Bloc ${session.currentBlock}/${session.totalBlocks} en cours…`;
+  }
+  updateSkillPracticeDisplay();
   skillPracticeTimer.interval = setInterval(() => {
+    skillPracticeTimer.seconds += 1;
     if (skillPracticeTimer.seconds >= BLOCK_DURATION_SECONDS) {
-      pauseSkillPractice(false);
-      skillPracticeTimer.seconds = BLOCK_DURATION_SECONDS;
-      updateSkillPracticeDisplay();
-      ui.skillTimerStatus.textContent = 'Bloc complet, valide les observations.';
+      completeSkillPractice(true);
       return;
     }
-    skillPracticeTimer.seconds += 1;
     updateSkillPracticeDisplay();
   }, 1000);
+  updateSkillControlState();
 }
 
 function pauseSkillPractice(showPause) {
@@ -640,24 +657,84 @@ function pauseSkillPractice(showPause) {
     clearInterval(skillPracticeTimer.interval);
     skillPracticeTimer.interval = null;
   }
+  if (skillPracticeTimer.running && showPause) {
+    ui.skillTimerStatus.textContent = 'Chrono en pause.';
+  }
   skillPracticeTimer.running = false;
-  if (showPause) ui.skillTimerStatus.textContent = 'Chrono en pause.';
+  updateSkillControlState();
 }
 
 function resetSkillPractice(keepStatus) {
+  if (state.skill.session?.pendingBlock) {
+    ui.skillTimerStatus.textContent = 'Valide ou réinitialise le bloc pour relancer le chrono.';
+    return;
+  }
   pauseSkillPractice(false);
   skillPracticeTimer.seconds = 0;
   updateSkillPracticeDisplay();
   if (!keepStatus) ui.skillTimerStatus.textContent = '';
+  updateSkillControlState();
+}
+
+function completeSkillPractice(autoComplete) {
+  const session = state.skill.session;
+  if (!session) return;
+  if (session.pendingBlock) {
+    ui.skillTimerStatus.textContent = 'Bloc déjà terminé, valide les données.';
+    return;
+  }
+  if (!skillPracticeTimer.running && skillPracticeTimer.seconds === 0) {
+    ui.skillTimerStatus.textContent = 'Lance le chrono avant de terminer le bloc.';
+    return;
+  }
+  const recordedSeconds = autoComplete ? BLOCK_DURATION_SECONDS : skillPracticeTimer.seconds;
+  pauseSkillPractice(false);
+  const practiceSeconds = Math.min(recordedSeconds, BLOCK_DURATION_SECONDS);
+  if (practiceSeconds <= 0) {
+    ui.skillTimerStatus.textContent = 'Le chrono doit tourner avant de terminer.';
+    return;
+  }
+  const recoverSeconds = Math.max(0, BLOCK_DURATION_SECONDS - practiceSeconds);
+  session.pendingBlock = { practiceSeconds, recoverSeconds };
+  skillPracticeTimer.seconds = practiceSeconds;
+  updateSkillPracticeDisplay();
+  ui.skillTimerStatus.textContent = 'Bloc terminé : renseigne les observables puis valide.';
+  persistState(false);
+  updateSkillControlState();
+  renderSkillStatus();
 }
 
 function updateSkillPracticeDisplay() {
   ui.skillPracticeTimer.textContent = formatTime(skillPracticeTimer.seconds);
 }
 
+function updateSkillControlState() {
+  const session = state.skill.session;
+  const pending = Boolean(session?.pendingBlock);
+  const sessionComplete = Boolean(session && session.currentBlock > session.totalBlocks);
+  const hasTime = skillPracticeTimer.seconds > 0;
+  const ready = isSkillReady();
+  if (ui.skillStart) {
+    ui.skillStart.disabled = !ready || pending || skillPracticeTimer.running || sessionComplete;
+  }
+  if (ui.skillPause) {
+    ui.skillPause.disabled = !skillPracticeTimer.running;
+  }
+  if (ui.skillEndBlock) {
+    ui.skillEndBlock.disabled = pending || sessionComplete || (!skillPracticeTimer.running && !hasTime);
+  }
+  if (ui.skillValidate) {
+    ui.skillValidate.disabled = !pending;
+  }
+  if (ui.skillReset) {
+    ui.skillReset.disabled = pending;
+  }
+}
+
 function ensureSkillSession() {
   if (state.skill.session) return;
-  const totalBlocks = (state.skill.duration / 2) | 0;
+  const duration = sanitizeSkillDuration(state.skill.duration);
+  const totalBlocks = Math.max(1, Math.floor(duration / 2));
   state.skill.session = {
     totalBlocks,
     currentBlock: 1,
@@ -666,55 +743,80 @@ function ensureSkillSession() {
     practiceSecondsTotal: 0,
     recoverSecondsTotal: 0,
     courseOkCount: 0,
+    pendingBlock: null,
+    durationMinutes: duration,
   };
-  ui.skillTimerStatus.textContent = 'Séance démarrée.';
+  ui.skillTimerStatus.textContent = 'Séance démarrée : lance le bloc 1.';
   updateSkillBlockCounter();
+  updateSkillControlState();
 }
 
 function updateSkillBlockCounter() {
-  const total = state.skill.session?.totalBlocks || state.skill.duration / 2 || 0;
-  const current = state.skill.session?.currentBlock || 0;
-  ui.skillBlockCounter.textContent = total ? `Bloc ${Math.min(current, total)}/${total}` : 'Bloc 0/0';
+  const active = state.skill.session;
+  const total = active ? active.totalBlocks : Math.max(1, Math.floor(sanitizeSkillDuration(state.skill.duration) / 2));
+  const current = active ? Math.min(active.currentBlock, total) : 0;
+  ui.skillBlockCounter.textContent = total ? `Bloc ${current}/${total}` : 'Bloc 0/0';
 }
 
 function renderSkillStatus() {
   updateSkillPracticeDisplay();
   updateSkillBlockCounter();
-  const activeBlocks = state.skill.session?.blocks;
-  if (activeBlocks?.length) {
-    ui.skillSessionLog.innerHTML = activeBlocks
-      .map(
-        (bloc, index) => `
+  const session = state.skill.session;
+  if (session) {
+    if (session.pendingBlock && !skillPracticeTimer.running && skillPracticeTimer.seconds === 0) {
+      skillPracticeTimer.seconds = session.pendingBlock.practiceSeconds;
+      updateSkillPracticeDisplay();
+    }
+    let entries = session.blocks
+      .map((bloc, index) => {
+        const detail = Object.values(bloc.exercises)
+          .map((entry) => {
+            const exercise = EXERCISES.find((ex) => ex.id === entry.id);
+            return `${exercise?.name || entry.id}: ${entry.done}/${entry.expected}`;
+          })
+          .join(' • ');
+        return `
           <div class="log-entry">
             <strong>Bloc ${index + 1}</strong>
-            <p>Pratique ${formatTime(bloc.practiceSeconds)} · Récup ${formatTime(bloc.recoverSeconds)}</p>
-            <p>Course ${bloc.courseOk ? '✅' : '❌'}</p>
-          </div>`
-      )
+            <p>Pratique ${formatTime(bloc.practiceSeconds)} · Récup ${formatTime(bloc.recoverSeconds)} · Course ${bloc.courseOk ? '✅' : '❌'}</p>
+            ${detail ? `<p>${detail}</p>` : ''}
+          </div>`;
+      })
       .join('');
+    const pendingMsg = session.pendingBlock
+      ? `<p class="hint">Bloc ${session.currentBlock}/${session.totalBlocks} terminé : renseigne puis valide.</p>`
+      : '<p class="hint">Lance le bloc en cours dès que prêt.</p>';
+    if (!entries) entries = pendingMsg;
+    else if (session.pendingBlock) entries += pendingMsg;
+    ui.skillSessionLog.innerHTML = entries;
+    updateSkillControlState();
     return;
   }
   if (state.skill.lastSession) {
     const last = state.skill.lastSession;
-    const summary = ['cardio', 'haut', 'bas', 'gainage']
-      .map((familyId, index) => {
-        const exerciseId = state.skill.selection[familyId];
-        const total = exerciseId ? last.totals[exerciseId] : null;
-        if (!total) return '';
-        const exercise = EXERCISES.find((ex) => ex.id === exerciseId);
-        return `<li>Ex${index + 1} : ${exercise?.name || exerciseId} — ${total.done}/${total.expected} reps</li>`;
-      })
+    const selection = last.selection || state.skill.selection;
+    const list = FAMILIES.map((family) => {
+      const exId = selection[family.id];
+      if (!exId) return '';
+      const data = last.totals[exId];
+      if (!data) return '';
+      const exercise = EXERCISES.find((ex) => ex.id === exId);
+      return `<li>${exercise?.name || exId} — ${data.done}/${data.expected} reps (N${data.level})</li>`;
+    })
+      .filter(Boolean)
       .join('');
     ui.skillSessionLog.innerHTML = `
       <div class="log-summary">
         <p><strong>Dernière séance :</strong> ${last.blocks.length} blocs · pratique ${formatTime(last.practiceSecondsTotal)} · récup ${formatTime(
-      last.recoverSecondsTotal
-    )} · course ${last.courseOkCount}/${last.blocks.length}.</p>
-        <ul>${summary}</ul>
+          last.recoverSecondsTotal
+        )} · course ${last.courseOkCount}/${last.blocks.length}.</p>
+        <ul>${list}</ul>
       </div>`;
-  } else {
-    ui.skillSessionLog.innerHTML = '<p class="hint">Commence la séance pour voir le suivi des blocs.</p>';
+    updateSkillControlState();
+    return;
   }
+  ui.skillSessionLog.innerHTML = '<p class="hint">Commence la séance pour voir le suivi des blocs.</p>';
+  updateSkillControlState();
 }
 
 function validateSkillBlock() {
@@ -723,16 +825,15 @@ function validateSkillBlock() {
     return;
   }
   ensureSkillSession();
-  if (skillPracticeTimer.seconds === 0) {
-    ui.skillSaveStatus.textContent = 'Mesure le temps de pratique avant de valider.';
+  const session = state.skill.session;
+  if (!session) return;
+  if (!session.pendingBlock) {
+    ui.skillSaveStatus.textContent = 'Termine le bloc (chrono) avant de valider.';
     return;
   }
-  pauseSkillPractice(false);
-  const practiceSeconds = Math.min(skillPracticeTimer.seconds, BLOCK_DURATION_SECONDS);
-  const recoverSeconds = Math.max(0, BLOCK_DURATION_SECONDS - practiceSeconds);
   const block = {
-    practiceSeconds,
-    recoverSeconds,
+    practiceSeconds: session.pendingBlock.practiceSeconds,
+    recoverSeconds: session.pendingBlock.recoverSeconds,
     courseOk: ui.skillCourseOk.checked,
     exercises: {},
   };
@@ -756,23 +857,27 @@ function validateSkillBlock() {
     ui.skillSaveStatus.textContent = 'Renseigne au moins un exercice avant de valider.';
     return;
   }
-  state.skill.session.blocks.push(block);
-  state.skill.session.practiceSecondsTotal += practiceSeconds;
-  state.skill.session.recoverSecondsTotal += recoverSeconds;
-  if (block.courseOk) state.skill.session.courseOkCount += 1;
-  const totalBlocks = state.skill.session.totalBlocks;
-  if (state.skill.session.currentBlock >= totalBlocks) {
+  session.blocks.push(block);
+  session.practiceSecondsTotal += block.practiceSeconds;
+  session.recoverSecondsTotal += block.recoverSeconds;
+  if (block.courseOk) session.courseOkCount += 1;
+  session.pendingBlock = null;
+  const totalBlocks = session.totalBlocks;
+  const completedBlocks = session.blocks.length;
+  if (completedBlocks >= totalBlocks) {
     finalizeSkillSession();
   } else {
-    state.skill.session.currentBlock += 1;
-    ui.skillSaveStatus.textContent = `Bloc ${state.skill.session.currentBlock - 1} enregistré. Passe au bloc suivant.`;
-    resetSkillPractice(false);
+    session.currentBlock = completedBlocks + 1;
+    ui.skillSaveStatus.textContent = `Bloc ${completedBlocks} enregistré. Lance le suivant.`;
+    skillPracticeTimer.seconds = 0;
+    updateSkillPracticeDisplay();
     updateSkillBlockCounter();
+    state.skill.courseOk = false;
+    ui.skillCourseOk.checked = false;
+    persistState();
+    renderSkillInputs();
   }
-  ui.skillCourseOk.checked = false;
-  state.skill.courseOk = false;
-  renderSkillInputs();
-  persistState();
+  updateSkillControlState();
 }
 
 function accumulateSkillTotals(entry) {
@@ -788,20 +893,30 @@ function accumulateSkillTotals(entry) {
 }
 
 function finalizeSkillSession() {
+  const session = state.skill.session;
+  if (!session) return;
   state.skill.lastSession = {
     recordedAt: new Date().toISOString(),
-    durationMinutes: state.skill.duration,
-    totals: state.skill.session.totals,
-    practiceSecondsTotal: state.skill.session.practiceSecondsTotal,
-    recoverSecondsTotal: state.skill.session.recoverSecondsTotal,
-    courseOkCount: state.skill.session.courseOkCount,
-    blocks: state.skill.session.blocks,
+    durationMinutes: session.durationMinutes || sanitizeSkillDuration(state.skill.duration),
+    totals: session.totals,
+    practiceSecondsTotal: session.practiceSecondsTotal,
+    recoverSecondsTotal: session.recoverSecondsTotal,
+    courseOkCount: session.courseOkCount,
+    blocks: session.blocks,
+    selection: { ...state.skill.selection },
   };
   ui.skillSaveStatus.textContent = 'Séance terminée ✔️';
   state.skill.session = null;
-  resetSkillPractice(false);
+  state.skill.courseOk = false;
+  ui.skillCourseOk.checked = false;
+  pauseSkillPractice(false);
+  skillPracticeTimer.seconds = 0;
+  updateSkillPracticeDisplay();
+  updateSkillBlockCounter();
   persistState();
-  renderSkillStatus();
+  renderSkillInputs();
+  ui.skillTimerStatus.textContent = 'Séance terminée. Génère le QR ou lance une nouvelle séance.';
+  updateSkillControlState();
 }
 
 function resetSkillInputs(clearValues) {
@@ -812,7 +927,11 @@ function resetSkillInputs(clearValues) {
     ui.skillCourseOk.checked = false;
     state.skill.courseOk = false;
   }
+  if (state.skill.session) state.skill.session.pendingBlock = null;
+  skillPracticeTimer.seconds = 0;
   resetSkillPractice(true);
+  ui.skillTimerStatus.textContent = 'Bloc réinitialisé.';
+  updateSkillControlState();
   persistState(false);
   renderSkillInputs();
 }
@@ -821,11 +940,16 @@ function resetSkillSession(message) {
   if (state.skill.session) {
     state.skill.session = null;
     ui.skillSaveStatus.textContent = message || 'Séance réinitialisée.';
-    resetSkillPractice(true);
+  } else if (message) {
+    ui.skillSaveStatus.textContent = message;
   }
   state.skill.lastSession = null;
+  state.skill.courseOk = false;
+  ui.skillCourseOk.checked = false;
+  skillPracticeTimer.seconds = 0;
+  resetSkillPractice(true);
   persistState(false);
-  renderSkillStatus();
+  renderSkillInputs();
 }
 
 function handleSkillQr() {
@@ -834,52 +958,45 @@ function handleSkillQr() {
     return;
   }
   const payload = buildSkillPayload();
+  if (!payload) return;
   renderQr(payload, ui.skillQrOutput, ui.skillQrSize);
 }
 
 function buildSkillPayload() {
-  if (!isIdentityComplete()) {
+  const session = state.skill.lastSession;
+  const payload = buildBasePayload('skill', 'S');
+  if (!payload) {
     ui.skillQrSize.textContent = 'Complète prénom, nom, classe.';
     return null;
   }
-  const session = state.skill.lastSession;
-  const participant = buildParticipantBase('skill');
-  participant.ct_skill_minutes = session.durationMinutes;
-  participant.ct_skill_blocks = session.blocks.length;
-  participant.ct_skill_practice_s = session.practiceSecondsTotal;
-  participant.ct_skill_recover_s = session.recoverSecondsTotal;
-  participant.ct_skill_course_ok = session.courseOkCount;
-  if (state.student.observer) participant.ct_observer = state.student.observer;
-  const ordered = FAMILIES.map((family) => {
-    const exerciseId = state.skill.selection[family.id];
-    return exerciseId && session.totals[exerciseId] ? session.totals[exerciseId] : null;
-  }).filter(Boolean);
-  ordered.forEach((entry, index) => {
-    const prefix = `ct_skill_exo${index + 1}`;
-    participant[`${prefix}_id`] = entry.id;
-    participant[`${prefix}_lvl`] = entry.level;
-    participant[`${prefix}_prev`] = entry.expected;
-    participant[`${prefix}_done`] = entry.done;
+  payload.ct_minutes = session.durationMinutes;
+  payload.ct_blocks = session.blocks.length;
+  payload.ct_practice_total_s = session.practiceSecondsTotal;
+  payload.ct_recovery_total_s = session.recoverSecondsTotal;
+  payload.ct_course_ok = session.courseOkCount;
+  payload.ct_course_ko = Math.max(0, session.blocks.length - session.courseOkCount);
+  Object.values(session.totals || {}).forEach((entry) => {
+    const slug = slugify(entry.id);
+    payload[`ct_sk_${slug}_lvl`] = entry.level;
+    payload[`ct_sk_${slug}_prev`] = entry.expected;
+    payload[`ct_sk_${slug}_real`] = entry.done;
   });
-  return buildEnvelope('skill', participant);
+  return payload;
 }
 
-function buildParticipantBase(mode) {
-  return {
+function buildBasePayload(mode, suffix) {
+  const prenom = (state.student.prenom || '').trim();
+  const classe = (state.student.classe || '').trim();
+  if (!prenom || !classe) return null;
+  const payload = {
     nom: ensureNom(state.student.nom),
-    prenom: state.student.prenom,
-    classe: state.student.classe,
+    prenom: `${prenom}${suffix}`,
+    classe,
     ct_mode: mode,
+    ct_date: new Date().toISOString(),
   };
-}
-
-function buildEnvelope(mode, participant) {
-  return {
-    appName: APP_NAME,
-    mode,
-    date: new Date().toISOString(),
-    participants: [participant],
-  };
+  if (state.student.observer) payload.ct_observer = state.student.observer;
+  return payload;
 }
 
 // ------------------ QR + Export ------------------
@@ -992,7 +1109,9 @@ function closeModal() {
 
 // ------------------ Helpers ------------------
 function isIdentityComplete() {
-  return Boolean(state.student.prenom && state.student.classe && ensureNom(state.student.nom));
+  const prenom = (state.student.prenom || '').trim();
+  const classe = (state.student.classe || '').trim();
+  return Boolean(prenom && classe && ensureNom(state.student.nom));
 }
 
 function ensureNom(value) {
@@ -1063,7 +1182,7 @@ function loadState() {
 
 function mergeState(partial) {
   const base = defaultState();
-  return {
+  const merged = {
     ...base,
     ...partial,
     student: { ...base.student, ...(partial.student || {}) },
@@ -1081,4 +1200,24 @@ function mergeState(partial) {
       inputs: { ...base.skill.inputs, ...(partial.skill?.inputs || {}) },
     },
   };
+  merged.skill.duration = sanitizeSkillDuration(Number(merged.skill.duration) || 10);
+  if (merged.skill.session) {
+    const session = merged.skill.session;
+    if (typeof session.pendingBlock === 'undefined') session.pendingBlock = null;
+    if (!session.totalBlocks) {
+      session.totalBlocks = Math.max(1, Math.floor((session.durationMinutes || merged.skill.duration) / 2));
+    }
+    if (!session.durationMinutes) {
+      session.durationMinutes = sanitizeSkillDuration(merged.skill.duration);
+    }
+  }
+  return merged;
+}
+
+function isSkillReady() {
+  return FAMILIES.every((family) => Boolean(state.skill.selection[family.id]));
+}
+
+function sanitizeSkillDuration(value) {
+  return ALLOWED_SKILL_DURATIONS.includes(value) ? value : 10;
 }

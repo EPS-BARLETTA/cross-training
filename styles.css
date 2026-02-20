@@ -301,6 +301,12 @@ select {
   gap: 1rem;
 }
 
+.skill-toolbar {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 0.2rem;
+}
+
 .skill-card {
   border: 1px solid #e2e8f0;
   border-radius: 20px;
