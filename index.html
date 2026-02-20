@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Cross Training – iPad</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <main class="app-shell">
+      <header class="hero">
+        <div>
+          <p class="eyebrow">EPS • Carnet hors-ligne</p>
+          <h1>Outil Cross Training</h1>
+          <p class="subhead">Deux modes (Entraînement & Skill), QR ScanProf, import/export JSON — fonctionne sans réseau.</p>
+        </div>
+        <div id="status-pill" class="status-pill">Non sauvegardé</div>
+      </header>
+
+      <section class="card identity" aria-labelledby="identity-title">
+        <header>
+          <h2 id="identity-title">Identité élève</h2>
+          <p>Nom obligatoire pour ScanProf (mettre « - » si besoin). Les données sont stockées dans l’iPad (localStorage).</p>
+        </header>
+        <div class="identity-grid">
+          <label>Prénom<input id="student-first" type="text" autocomplete="off" placeholder="Lina" /></label>
+          <label>Nom<input id="student-last" type="text" autocomplete="off" placeholder="Dupont ou -" /></label>
+          <label>Classe<input id="student-class" type="text" autocomplete="off" placeholder="4C" /></label>
+          <label>Observateur<input id="observer" type="text" autocomplete="off" placeholder="Prof / camarade" /></label>
+        </div>
+      </section>
+
+      <nav class="tabs" aria-label="Modes">
+        <button class="tab-btn active" data-tab="training">Mode Entraînement</button>
+        <button class="tab-btn" data-tab="skill">Mode Skill</button>
+      </nav>
+
+      <section id="training-panel" class="card tab-panel" data-panel="training">
+        <header>
+          <h2>Entraînement (cours de 1 minute)</h2>
+          <p>Choisis un exercice, lance le chrono 1:00, puis renseigne les répétitions réalisées en N1 et N2. L’app conserve les meilleurs scores et la dernière date.</p>
+        </header>
+
+        <div class="training-active" id="training-active">
+          <div class="active-info">
+            <p class="label">Exercice sélectionné</p>
+            <h3 id="training-active-name">Aucun exercice</h3>
+            <p id="training-active-hint" class="hint">Sélectionne une carte ci-dessous pour commencer.</p>
+            <p id="training-active-meta" class="meta"></p>
+          </div>
+          <div class="timer-box">
+            <p class="label">Chrono 1:00</p>
+            <p id="training-timer" class="timer-value">01:00</p>
+            <div class="timer-controls">
+              <button class="btn primary" id="training-start">Start</button>
+              <button class="btn secondary" id="training-pause">Pause</button>
+              <button class="btn ghost" id="training-reset">Reset</button>
+            </div>
+            <p id="training-timer-hint" class="hint"></p>
+          </div>
+          <div class="result-entry">
+            <label>Répétitions N1<input id="training-input-n1" type="number" min="0" /></label>
+            <label>Répétitions N2<input id="training-input-n2" type="number" min="0" /></label>
+            <button class="btn primary" id="training-save">Enregistrer le score</button>
+            <p id="training-save-status" class="hint"></p>
+          </div>
+        </div>
+
+        <div class="exercise-grid" id="training-grid" role="list"></div>
+
+        <section class="history" aria-labelledby="history-title">
+          <div class="section-head">
+            <h3 id="history-title">Historique (meilleurs scores)</h3>
+            <p>Affiche la meilleure valeur enregistrée en N1/N2 et la dernière date saisie.</p>
+          </div>
+          <div id="training-history" class="history-list"></div>
+        </section>
+
+        <section class="qr-block">
+          <div class="qr-actions">
+            <button class="btn primary" id="training-qr-btn">Générer QR Entraînement</button>
+            <p id="training-qr-size" class="hint"></p>
+          </div>
+          <div id="training-qr-output" class="qr-output"></div>
+        </section>
+      </section>
+
+      <section id="skill-panel" class="card tab-panel hidden" data-panel="skill">
+        <header>
+          <h2>Mode Skill (enchaînement + course)</h2>
+          <p>Sélectionne 1 exercice par famille + la course, choisis N1 ou N2 pour chacun, règle la durée (5 à 20 minutes). Chaque tour = 1 min 30 de travail + 30 s de récup.</p>
+        </header>
+
+        <div class="skill-builder" id="skill-builder"></div>
+
+        <div class="skill-settings">
+          <label>Durée totale
+            <select id="skill-duration">
+              <option value="5">5 minutes</option>
+              <option value="10">10 minutes</option>
+              <option value="15">15 minutes</option>
+              <option value="20">20 minutes</option>
+            </select>
+          </label>
+          <div class="timer-box">
+            <p class="label">Temps restant</p>
+            <p id="skill-timer-total" class="timer-value">00:00</p>
+            <p class="label">Bloc (Travail / Récup)</p>
+            <p id="skill-timer-block" class="timer-value">00:00</p>
+            <p id="skill-timer-phase" class="phase">TRAVAIL</p>
+            <p id="skill-timer-rounds" class="hint"></p>
+            <div class="timer-controls">
+              <button class="btn primary" id="skill-start">Start</button>
+              <button class="btn secondary" id="skill-pause">Pause</button>
+              <button class="btn ghost" id="skill-reset">Reset</button>
+            </div>
+          </div>
+        </div>
+
+        <section class="results" aria-labelledby="results-title">
+          <div class="section-head">
+            <h3 id="results-title">Observations & saisie</h3>
+            <p>Compléter les répétitions réalisées pour chaque exercice et la course.</p>
+          </div>
+          <div id="skill-results-grid" class="results-grid"></div>
+          <button class="btn secondary" id="skill-save">Enregistrer la séance</button>
+          <p id="skill-save-status" class="hint"></p>
+        </section>
+
+        <section class="qr-block">
+          <div class="qr-actions">
+            <button class="btn primary" id="skill-qr-btn">Générer QR Skill</button>
+            <p id="skill-qr-size" class="hint"></p>
+          </div>
+          <div id="skill-qr-output" class="qr-output"></div>
+        </section>
+      </section>
+
+      <section class="card actions">
+        <header>
+          <h2>Sauvegarde & outils</h2>
+          <p>Exporter/Importer un fichier JSON pour éviter les pertes (avant changement d’iPad).</p>
+        </header>
+        <div class="action-row">
+          <button class="btn secondary" id="export-btn">Exporter mes données</button>
+          <label class="btn ghost file-label">Importer<input type="file" id="import-input" accept="application/json" hidden /></label>
+          <button class="btn ghost" id="reset-btn">Reset total</button>
+        </div>
+      </section>
+    </main>
+
+    <div id="modal" class="modal hidden" role="dialog" aria-modal="true">
+      <div class="modal-card">
+        <button id="modal-close" class="modal-close" aria-label="Fermer">×</button>
+        <div id="modal-body"></div>
+      </div>
+    </div>
+
+    <script src="qrcode.min.js"></script>
+    <script src="script.js"></script>
+  </body>
+</html>
