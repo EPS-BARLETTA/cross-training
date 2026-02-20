@@ -87,8 +87,8 @@
 
       <section id="skill-panel" class="card tab-panel hidden" data-panel="skill">
         <header>
-          <h2>Mode Skill (enchaînement + course)</h2>
-          <p>Sélectionne 1 exercice par famille + la course, choisis N1 ou N2 pour chacun, règle la durée (5 à 20 minutes). Chaque tour = 1 min 30 de travail + 30 s de récup.</p>
+          <h2>Mode Skill (blocs de 2 minutes)</h2>
+          <p>Construit un skill (1 exercice par famille) puis enchaîne des blocs de 2 minutes. Le chrono mesure le temps de pratique et la récupération est calculée automatiquement.</p>
         </header>
 
         <div class="skill-builder" id="skill-builder"></div>
@@ -96,35 +96,43 @@
         <div class="skill-settings">
           <label>Durée totale
             <select id="skill-duration">
-              <option value="5">5 minutes</option>
-              <option value="10">10 minutes</option>
-              <option value="15">15 minutes</option>
-              <option value="20">20 minutes</option>
+              <option value="6">6 minutes (3 blocs)</option>
+              <option value="10" selected>10 minutes (5 blocs)</option>
+              <option value="16">16 minutes (8 blocs)</option>
+              <option value="20">20 minutes (10 blocs)</option>
             </select>
           </label>
-          <div class="timer-box">
-            <p class="label">Temps restant</p>
-            <p id="skill-timer-total" class="timer-value">00:00</p>
-            <p class="label">Bloc (Travail / Récup)</p>
-            <p id="skill-timer-block" class="timer-value">00:00</p>
-            <p id="skill-timer-phase" class="phase">TRAVAIL</p>
-            <p id="skill-timer-rounds" class="hint"></p>
+          <div class="timer-box practice-box">
+            <p class="label">Chrono pratique</p>
+            <p id="skill-practice-timer" class="timer-value">00:00</p>
+            <p id="skill-block-counter" class="hint">Bloc 0/0</p>
             <div class="timer-controls">
               <button class="btn primary" id="skill-start">Start</button>
               <button class="btn secondary" id="skill-pause">Pause</button>
               <button class="btn ghost" id="skill-reset">Reset</button>
             </div>
+            <p id="skill-timer-status" class="hint"></p>
           </div>
         </div>
 
         <section class="results" aria-labelledby="results-title">
           <div class="section-head">
-            <h3 id="results-title">Observations & saisie</h3>
-            <p>Compléter les répétitions réalisées pour chaque exercice et la course.</p>
+            <h3 id="results-title">Observations bloc en cours</h3>
+            <p>Renseigne les répétitions prévues / réalisées pour chaque exercice puis valide le bloc.</p>
           </div>
           <div id="skill-results-grid" class="results-grid"></div>
-          <button class="btn secondary" id="skill-save">Enregistrer la séance</button>
+          <div class="course-row">
+            <label class="course-check">
+              <input type="checkbox" id="skill-course-ok" />
+              Course validée (✅)
+            </label>
+          </div>
+          <div class="block-actions">
+            <button class="btn primary" id="skill-validate-block">Valider le bloc</button>
+            <button class="btn ghost" id="skill-reset-block">Reset bloc</button>
+          </div>
           <p id="skill-save-status" class="hint"></p>
+          <div id="skill-session-log" class="session-log"></div>
         </section>
 
         <section class="qr-block">

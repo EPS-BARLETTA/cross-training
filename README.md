@@ -1,36 +1,42 @@
-# Carnet Cross Training – Version iPad (offline)
+# Carnet Cross Training (GitHub Pages / Offline)
 
-Tout tient à la racine : `index.html`, `styles.css`, `script.js`, les images (`*.jpg` / `*.png`) et `qrcode.min.js`. Aucun dossier `assets/`, aucun fetch réseau.
+Application statique (aucun build) pensée pour être servie depuis GitHub Pages ou ouverte en local sur iPad/Safari.
 
-## Fonctionnalités
-1. **Identité** : prénom (obligatoire), nom (facultatif), classe (obligatoire). Saisie sauvegardée automatiquement dans `localStorage` (`CT_APP_STATE_V1`).
-2. **Bibliothèque** : catalogue JS (`EXERCISES`) Stocké dans `script.js`. Chaque carte affiche l’image locale (ex. `burpees.jpg`) + les niveaux disponibles.
-3. **Sélection** : un clic sur « Choisir » pré-remplit le panneau « Sélection actuelle » avec le niveau 1. On peut changer de niveau, visualiser les points et retirer l’exercice.
-4. **QR ScanProf** : bouton « Générer QR ScanProf » → JSON plat UTF‑8 (< 3 KB) contenant identité + infos challenge (`ct_exo`, `ct_exo_id`, `ct_lvl`, `ct_pts`, `ct_date`).
-5. **Sauvegarde** : `state = { v:1, updatedAt, student, selected }`. Réinitialisation via le bouton « Réinitialiser » (vide le localStorage).
-
-## Structure
+## Fichiers
 ```
-index.html   # UI (identité, bibli, sélection, QR)
-styles.css   # Style light façon fiche EPS
-script.js    # Catalogue, state, QR
-qrcode.min.js# Librairie QR locale
-*.jpg *.png  # Visuels exercices (racine)
+index.html        # Structure et onglets (Entraînement / Skill)
+styles.css        # Styles light iPad friendly
+script.js         # Catalogue exercices, state localStorage, QR ScanProf
+qrcode.min.js     # Librairie QR locale (aucun CDN)
+assets/*.jpg      # Fiches visuelles (burpees.jpg, jumping-jack.jpg, ...)
 ```
 
-## Astuces
-- Les images manquantes sont remplacées par un placeholder SVG (pas de crash).
-- Pour ajouter un nouvel exercice : compléter `EXERCISES` dans `script.js` + déposer l’image au même niveau.
-- Le QR affiché se lit avec l’app ScanProf (format JSON plat). Exemple :
-```
-{
-  "nom": "-",
-  "prenom": "Lola",
-  "classe": "4C",
-  "ct_exo": "Burpees",
-  "ct_exo_id": "burpees",
-  "ct_lvl": 2,
-  "ct_pts": 20,
-  "ct_date": "2026-02-20"
-}
-```
+## Images / fiches exercices
+- Placer chaque visuel dans `assets/` et utiliser un nom en minuscules + tirets (`mountain.jpg`, `jumping-jack.jpg`, ...).
+- Ajouter l’entrée correspondante dans `EXERCISES` (script.js) avec `image: 'assets/<nom>.jpg'`.
+- Si une image manque, l’app affiche automatiquement un placeholder.
+
+## Publier sur GitHub Pages
+1. Pousser la branche sur GitHub (`main` par défaut).
+2. Activer GitHub Pages > Source = `main / root`.
+3. L’app est accessible via `https://<user>.github.io/cross-training/` (tous les chemins sont relatifs).
+
+## Export / Import
+- Bouton **Exporter mes données** → télécharge un JSON (`cross-training_<prenom>_<classe>_YYYY-MM-DD.json`).
+- Bouton **Importer** → recharge une sauvegarde précédemment exportée (versions compatibles uniquement).
+- LocalStorage (`CT_APP_STATE_V3`) assure la persistance tant que le cache n’est pas vidé.
+
+## QR ScanProf
+- Les QR sont générés côté client via `qrcode.min.js`.
+- Format imposé : `{appName, mode, date, participants:[{nom, prenom, classe, ...}]}`.
+- Deux modes :
+  * **training** → champs `ct_tr_*` (timer 60 s + records par exercice).
+  * **skill** → champs `ct_skill_*` (durée, blocs, totaux par famille, course ✅/❌).
+- Un compteur affiche la taille du JSON et alerte si > 2800 caractères.
+- Pour vérifier : ouvrir l’app ScanProf → scanner le QR → l’import doit être proposé.
+
+## Tests rapides
+1. **Entraînement** : choisir un exercice, lancer 1:00, saisir N1/N2 → vérifier l’historique + QR.
+2. **Skill** : sélectionner 4 familles, durée 6/10/16/20, chronométrer un bloc de 2', valider tous les blocs → QR skill disponible.
+3. **Images** : cliquer sur « Voir la fiche » pour vérifier que les visuels proviennent bien de `assets/`.
+4. **Sauvegarde** : exporter, reset, importer → l’état doit être restauré.

@@ -442,3 +442,80 @@ select {
     align-items: flex-start;
   }
 }
+
+
+.filter-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+.pill-filter {
+  border: 1px solid #c7d2fe;
+  border-radius: 999px;
+  background: #eef2ff;
+  color: #312e81;
+  padding: 0.35rem 1rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.pill-filter.active {
+  background: #4338ca;
+  border-color: #4338ca;
+  color: #fff;
+}
+
+.exercise-card.is-active {
+  border-color: #2563eb;
+  box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.12);
+}
+
+.practice-box {
+  justify-content: space-between;
+  min-height: 220px;
+}
+
+.result-fields {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 0.5rem;
+}
+
+.course-row {
+  margin: 0.75rem 0 0.25rem;
+}
+
+.course-check {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-weight: 600;
+}
+
+.block-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.session-log {
+  margin-top: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.log-entry,
+.log-summary {
+  border: 1px solid #e2e8f0;
+  border-radius: 16px;
+  padding: 0.75rem;
+  background: #f8fafc;
+}
+
+.log-summary ul {
+  margin: 0.35rem 0 0 1rem;
+  padding: 0;
+}
