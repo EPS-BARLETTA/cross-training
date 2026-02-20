@@ -108,12 +108,6 @@ const EXERCISES = [
   },
 ];
 
-const COURSE = {
-  id: 'course',
-  name: 'Course',
-  image: 'assets/saut.jpg',
-};
-
 const defaultState = () => ({
   v: STORAGE_VERSION,
   updatedAt: null,
@@ -133,7 +127,6 @@ const defaultState = () => ({
       bas: { expected: '', done: '' },
       gainage: { expected: '', done: '' },
     },
-    courseOk: false,
     session: null,
     lastSession: null,
   },
@@ -195,7 +188,6 @@ function cacheElements() {
   ui.skillEndBlock = document.getElementById('skill-end-block');
   ui.skillReset = document.getElementById('skill-reset');
   ui.skillResultsGrid = document.getElementById('skill-results-grid');
-  ui.skillCourseOk = document.getElementById('skill-course-ok');
   ui.skillValidate = document.getElementById('skill-validate-block');
   ui.skillResetBlock = document.getElementById('skill-reset-block');
   ui.skillSaveStatus = document.getElementById('skill-save-status');
@@ -220,9 +212,20 @@ function bindIdentity() {
     { el: ui.observer, key: 'observer' },
   ].forEach(({ el, key }) => {
     if (!el) return;
-    el.value = state.student[key] || '';
+    el.value = key === 'nom' ? normalizeInitial(state.student[key]) : state.student[key] || '';
+    if (key === 'nom') {
+      el.addEventListener('focus', () => {
+        el.select();
+      });
+    }
     el.addEventListener('input', () => {
-      state.student[key] = el.value.trim();
+      if (key === 'nom') {
+        const initial = normalizeInitial(el.value);
+        el.value = initial;
+        state.student[key] = initial;
+      } else {
+        state.student[key] = el.value.trim();
+      }
       persistState();
     });
   });
@@ -246,10 +249,6 @@ function bindActions() {
   ui.skillEndBlock?.addEventListener('click', () => completeSkillPractice(false));
   ui.skillReset?.addEventListener('click', () => resetSkillPractice(true));
   ui.skillDuration?.addEventListener('change', handleSkillDurationChange);
-  ui.skillCourseOk.addEventListener('change', () => {
-    state.skill.courseOk = ui.skillCourseOk.checked;
-    persistState(false);
-  });
   ui.skillValidate?.addEventListener('click', validateSkillBlock);
   ui.skillResetBlock?.addEventListener('click', () => resetSkillInputs(true));
   ui.skillQrBtn?.addEventListener('click', handleSkillQr);
@@ -566,6 +565,7 @@ function renderSkillInputs() {
   if (!ui.skillResultsGrid) return;
   if (ui.skillDuration) ui.skillDuration.value = String(state.skill.duration);
   ui.skillResultsGrid.innerHTML = '';
+  const lockExpected = Boolean(state.skill.session?.expectedLocked);
   FAMILIES.forEach((family) => {
     const row = document.createElement('div');
     row.className = 'result-card';
@@ -591,6 +591,7 @@ function renderSkillInputs() {
       inputState.expected = expectedInput.value;
       persistState(false);
     });
+    expectedInput.disabled = lockExpected;
     expectedLabel.appendChild(expectedInput);
     const doneLabel = document.createElement('label');
     doneLabel.textContent = 'Réalisé';
@@ -608,7 +609,6 @@ function renderSkillInputs() {
     row.appendChild(fields);
     ui.skillResultsGrid.appendChild(row);
   });
-  ui.skillCourseOk.checked = state.skill.courseOk;
   renderSkillStatus();
   updateSkillControlState();
 }
@@ -634,6 +634,11 @@ function startSkillPractice() {
   if (session.pendingBlock) {
     ui.skillTimerStatus.textContent = 'Valide ou réinitialise le bloc avant de relancer.';
     return;
+  }
+  if (!session.expectedLocked) {
+    session.expectedLocked = true;
+    persistState(false);
+    renderSkillInputs();
   }
   if (skillPracticeTimer.running) return;
   skillPracticeTimer.running = true;
@@ -742,9 +747,9 @@ function ensureSkillSession() {
     totals: {},
     practiceSecondsTotal: 0,
     recoverSecondsTotal: 0,
-    courseOkCount: 0,
     pendingBlock: null,
     durationMinutes: duration,
+    expectedLocked: false,
   };
   ui.skillTimerStatus.textContent = 'Séance démarrée : lance le bloc 1.';
   updateSkillBlockCounter();
@@ -778,7 +783,7 @@ function renderSkillStatus() {
         return `
           <div class="log-entry">
             <strong>Bloc ${index + 1}</strong>
-            <p>Pratique ${formatTime(bloc.practiceSeconds)} · Récup ${formatTime(bloc.recoverSeconds)} · Course ${bloc.courseOk ? '✅' : '❌'}</p>
+            <p>Pratique ${formatTime(bloc.practiceSeconds)} · Récup ${formatTime(bloc.recoverSeconds)}</p>
             ${detail ? `<p>${detail}</p>` : ''}
           </div>`;
       })
@@ -809,7 +814,7 @@ function renderSkillStatus() {
       <div class="log-summary">
         <p><strong>Dernière séance :</strong> ${last.blocks.length} blocs · pratique ${formatTime(last.practiceSecondsTotal)} · récup ${formatTime(
           last.recoverSecondsTotal
-        )} · course ${last.courseOkCount}/${last.blocks.length}.</p>
+        )}.</p>
         <ul>${list}</ul>
       </div>`;
     updateSkillControlState();
@@ -834,7 +839,6 @@ function validateSkillBlock() {
   const block = {
     practiceSeconds: session.pendingBlock.practiceSeconds,
     recoverSeconds: session.pendingBlock.recoverSeconds,
-    courseOk: ui.skillCourseOk.checked,
     exercises: {},
   };
   let hasData = false;
@@ -860,7 +864,6 @@ function validateSkillBlock() {
   session.blocks.push(block);
   session.practiceSecondsTotal += block.practiceSeconds;
   session.recoverSecondsTotal += block.recoverSeconds;
-  if (block.courseOk) session.courseOkCount += 1;
   session.pendingBlock = null;
   const totalBlocks = session.totalBlocks;
   const completedBlocks = session.blocks.length;
@@ -868,14 +871,13 @@ function validateSkillBlock() {
     finalizeSkillSession();
   } else {
     session.currentBlock = completedBlocks + 1;
-    ui.skillSaveStatus.textContent = `Bloc ${completedBlocks} enregistré. Lance le suivant.`;
+    ui.skillSaveStatus.textContent = `Bloc ${completedBlocks} enregistré. Bloc ${session.currentBlock}/${session.totalBlocks} prêt.`;
     skillPracticeTimer.seconds = 0;
     updateSkillPracticeDisplay();
     updateSkillBlockCounter();
-    state.skill.courseOk = false;
-    ui.skillCourseOk.checked = false;
     persistState();
     renderSkillInputs();
+    startSkillPractice();
   }
   updateSkillControlState();
 }
@@ -901,14 +903,11 @@ function finalizeSkillSession() {
     totals: session.totals,
     practiceSecondsTotal: session.practiceSecondsTotal,
     recoverSecondsTotal: session.recoverSecondsTotal,
-    courseOkCount: session.courseOkCount,
     blocks: session.blocks,
     selection: { ...state.skill.selection },
   };
   ui.skillSaveStatus.textContent = 'Séance terminée ✔️';
   state.skill.session = null;
-  state.skill.courseOk = false;
-  ui.skillCourseOk.checked = false;
   pauseSkillPractice(false);
   skillPracticeTimer.seconds = 0;
   updateSkillPracticeDisplay();
@@ -924,8 +923,6 @@ function resetSkillInputs(clearValues) {
     FAMILIES.forEach((family) => {
       state.skill.inputs[family.id] = { expected: '', done: '' };
     });
-    ui.skillCourseOk.checked = false;
-    state.skill.courseOk = false;
   }
   if (state.skill.session) state.skill.session.pendingBlock = null;
   skillPracticeTimer.seconds = 0;
@@ -944,8 +941,6 @@ function resetSkillSession(message) {
     ui.skillSaveStatus.textContent = message;
   }
   state.skill.lastSession = null;
-  state.skill.courseOk = false;
-  ui.skillCourseOk.checked = false;
   skillPracticeTimer.seconds = 0;
   resetSkillPractice(true);
   persistState(false);
@@ -973,8 +968,6 @@ function buildSkillPayload() {
   payload.ct_blocks = session.blocks.length;
   payload.ct_practice_total_s = session.practiceSecondsTotal;
   payload.ct_recovery_total_s = session.recoverSecondsTotal;
-  payload.ct_course_ok = session.courseOkCount;
-  payload.ct_course_ko = Math.max(0, session.blocks.length - session.courseOkCount);
   Object.values(session.totals || {}).forEach((entry) => {
     const slug = slugify(entry.id);
     payload[`ct_sk_${slug}_lvl`] = entry.level;
@@ -999,6 +992,10 @@ function buildBasePayload(mode, suffix) {
   return payload;
 }
 
+function toUtf8(value) {
+  return unescape(encodeURIComponent(value));
+}
+
 // ------------------ QR + Export ------------------
 function renderQr(payload, container, sizeLabel) {
   const json = JSON.stringify(payload);
@@ -1007,14 +1004,24 @@ function renderQr(payload, container, sizeLabel) {
   if (json.length > 2800) {
     const warn = document.createElement('p');
     warn.className = 'hint';
-    warn.textContent = 'QR trop volumineux (> 2800). Réduis la séance.';
+    warn.textContent = 'QR trop volumineux (> 2800). Réduis la séance ou les données.';
     container.appendChild(warn);
     return;
   }
   const box = document.createElement('div');
   box.className = 'qr-box';
+  box.style.padding = '12px';
+  box.style.background = '#fff';
   container.appendChild(box);
-  new QRCode(box, { text: json, width: 210, height: 210 });
+  new QRCode(box, {
+    text: toUtf8(json),
+    width: 300,
+    height: 300,
+    colorDark: '#111111',
+    colorLight: '#ffffff',
+    correctLevel: QRCode.CorrectLevel?.M ?? 0,
+    margin: 2,
+  });
   const pre = document.createElement('pre');
   pre.className = 'qr-json';
   pre.textContent = json;
@@ -1114,8 +1121,18 @@ function isIdentityComplete() {
   return Boolean(prenom && classe && ensureNom(state.student.nom));
 }
 
+function normalizeInitial(value) {
+  const trimmed = (value || '').trim();
+  if (!trimmed) return '';
+  const normalized =
+    typeof trimmed.normalize === 'function' ? trimmed.normalize('NFD').replace(/[\u0300-\u036f]/g, '') : trimmed;
+  const char = normalized.charAt(0);
+  return char ? char.toUpperCase() : '';
+}
+
 function ensureNom(value) {
-  return value?.trim() ? value.trim() : '-';
+  const initial = normalizeInitial(value);
+  return initial || 'X';
 }
 
 function parseNumber(value) {
@@ -1201,6 +1218,7 @@ function mergeState(partial) {
     },
   };
   merged.skill.duration = sanitizeSkillDuration(Number(merged.skill.duration) || 10);
+  merged.student.nom = normalizeInitial(merged.student.nom);
   if (merged.skill.session) {
     const session = merged.skill.session;
     if (typeof session.pendingBlock === 'undefined') session.pendingBlock = null;
@@ -1209,6 +1227,9 @@ function mergeState(partial) {
     }
     if (!session.durationMinutes) {
       session.durationMinutes = sanitizeSkillDuration(merged.skill.duration);
+    }
+    if (typeof session.expectedLocked !== 'boolean') {
+      session.expectedLocked = false;
     }
   }
   return merged;

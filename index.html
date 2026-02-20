@@ -24,7 +24,7 @@
         </header>
         <div class="identity-grid">
           <label>Prénom<input id="student-first" type="text" autocomplete="off" placeholder="Lina" /></label>
-          <label>Nom<input id="student-last" type="text" autocomplete="off" placeholder="Dupont ou -" /></label>
+          <label>Initiale du nom<input id="student-last" type="text" autocomplete="off" placeholder="D" maxlength="1" inputmode="text" /></label>
           <label>Classe<input id="student-class" type="text" autocomplete="off" placeholder="4C" /></label>
           <label>Observateur<input id="observer" type="text" autocomplete="off" placeholder="Prof / camarade" /></label>
         </div>
@@ -113,6 +113,7 @@
               <button class="btn primary" id="skill-start" type="button">Démarrer bloc</button>
               <button class="btn secondary" id="skill-pause">Pause</button>
               <button class="btn secondary" id="skill-end-block">Bloc terminé</button>
+              <button class="btn primary" id="skill-validate-block" type="button">Valider bloc</button>
               <button class="btn ghost" id="skill-reset">Reset chrono</button>
             </div>
             <p id="skill-timer-status" class="hint"></p>
@@ -125,14 +126,7 @@
             <p>Renseigne les répétitions prévues / réalisées pour chaque exercice puis valide le bloc.</p>
           </div>
           <div id="skill-results-grid" class="results-grid"></div>
-          <div class="course-row">
-            <label class="course-check">
-              <input type="checkbox" id="skill-course-ok" />
-              Course validée (✅)
-            </label>
-          </div>
           <div class="block-actions">
-            <button class="btn primary" id="skill-validate-block">Valider le bloc</button>
             <button class="btn ghost" id="skill-reset-block">Reset bloc</button>
           </div>
           <p id="skill-save-status" class="hint"></p>
