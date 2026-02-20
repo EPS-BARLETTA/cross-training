@@ -29,7 +29,7 @@
       id: 'burpees',
       name: 'Burpees',
       family: 'cardio',
-      image: 'assets/exercices/burpees.jpg',
+      image: 'assets/burpees.jpg',
       levels: [
         { n: 1, label: 'Burpees climber', expected: 12 },
         { n: 2, label: 'Burpees complets', expected: 16 },
@@ -39,7 +39,7 @@
       id: 'jumping',
       name: 'Jumping jack',
       family: 'cardio',
-      image: 'assets/exercices/jumping-jack.jpg',
+      image: 'assets/jumping-jack.jpg',
       levels: [
         { n: 1, label: 'Jack décomposé', expected: 20 },
         { n: 2, label: 'Jumping jack complet', expected: 30 },
@@ -49,7 +49,7 @@
       id: 'mountain',
       name: 'Mountain climbers',
       family: 'cardio',
-      image: 'assets/exercices/mountain.jpg',
+      image: 'assets/mountain.jpg',
       levels: [
         { n: 1, label: 'Version décomposée', expected: 18 },
         { n: 2, label: 'Version continue', expected: 26 },
@@ -59,7 +59,7 @@
       id: 'pompes',
       name: 'Pompes',
       family: 'haut',
-      image: 'assets/exercices/pompes.jpg',
+      image: 'assets/pompes.jpg',
       levels: [
         { n: 1, label: 'Plan incliné', expected: 12 },
         { n: 2, label: 'Pompes classiques', expected: 15 },
@@ -69,7 +69,7 @@
       id: 'dips',
       name: 'Triceps dips',
       family: 'haut',
-      image: 'assets/exercices/dips.jpg',
+      image: 'assets/dips.jpg',
       levels: [
         { n: 1, label: 'Jambes pliées', expected: 10 },
         { n: 2, label: 'Jambes tendues', expected: 14 },
@@ -79,7 +79,7 @@
       id: 'squat',
       name: 'Squat',
       family: 'bas',
-      image: 'assets/exercices/squat.jpg',
+      image: 'assets/squat.jpg',
       levels: [
         { n: 1, label: 'Sit squat', expected: 15 },
         { n: 2, label: 'Jump squat', expected: 18 },
@@ -89,7 +89,7 @@
       id: 'fentes',
       name: 'Fentes',
       family: 'bas',
-      image: 'assets/exercices/fentes.jpg',
+      image: 'assets/fentes.jpg',
       levels: [
         { n: 1, label: 'Lunge alterné', expected: 14 },
         { n: 2, label: 'Jump lunge', expected: 18 },
@@ -99,7 +99,7 @@
       id: 'shadow',
       name: 'Montées de genoux',
       family: 'bas',
-      image: 'assets/exercices/shadow.jpg',
+      image: 'assets/saut.jpg',
       levels: [
         { n: 1, label: 'Cadence contrôlée', expected: 30 },
         { n: 2, label: 'Cadence rapide', expected: 40 },
@@ -109,7 +109,7 @@
       id: 'crunch',
       name: 'Crunch',
       family: 'gainage',
-      image: 'assets/exercices/crunch.jpg',
+      image: 'assets/crunch.jpg',
       levels: [
         { n: 1, label: 'Crunch classique', expected: 18 },
         { n: 2, label: 'Sit up & twist', expected: 22 },
@@ -119,7 +119,7 @@
       id: 'rameur',
       name: 'Rameur au sol',
       family: 'gainage',
-      image: 'assets/exercices/rameur.jpg',
+      image: 'assets/rameur.jpg',
       levels: [
         { n: 1, label: 'Statique', expected: 20 },
         { n: 2, label: 'Dynamique', expected: 26 },
@@ -129,7 +129,7 @@
       id: 'hollow',
       name: 'Hollow body',
       family: 'gainage',
-      image: 'assets/exercices/hollow.jpg',
+      image: 'assets/crunch.jpg',
       levels: [
         { n: 1, label: 'Maintien 30 s', expected: 1 },
         { n: 2, label: 'Maintien 45 s', expected: 1 },
@@ -141,7 +141,7 @@
     id: 'course',
     name: 'Course',
     family: 'course',
-    image: 'assets/exercices/saut.jpg',
+    image: 'assets/saut.jpg',
     levels: [
       { n: 1, label: 'Course modérée', expected: 0 },
       { n: 2, label: 'Course intense', expected: 0 },
