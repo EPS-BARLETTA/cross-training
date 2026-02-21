@@ -110,15 +110,17 @@ const EXERCISES = [
 
 const EXO_CODES = {
   burpees: 'bu',
-  pompes: 'po',
-  'jumping-jack': 'jk',
-  mountain: 'mt',
-  squat: 'sq',
+  crunch: 'cr',
   dips: 'di',
   fentes: 'fe',
+  'jumping-jack': 'jk',
+  mountain: 'mt',
+  pompes: 'po',
   rameur: 'ra',
-  crunch: 'cr',
+  squat: 'sq',
 };
+
+const EXO_ORDER = ['burpees', 'crunch', 'dips', 'fentes', 'jumping-jack', 'mountain', 'pompes', 'rameur', 'squat'];
 
 const defaultState = () => ({
   v: STORAGE_VERSION,
@@ -519,13 +521,18 @@ function buildTrainingPayload() {
     ui.trainingQrSize.textContent = 'Complète prénom, nom, classe.';
     return null;
   }
-  const entries = Object.entries(state.training.history).filter(([, info]) => info.bestN1 != null || info.bestN2 != null);
-  if (!entries.length) {
+  const hasScores = EXO_ORDER.some((id) => {
+    const info = state.training.history[id];
+    return info && (info.bestN1 != null || info.bestN2 != null);
+  });
+  if (!hasScores) {
     ui.trainingQrSize.textContent = 'Enregistre au moins un test.';
     return null;
   }
   payload.ct_t = TRAINING_SECONDS;
-  entries.forEach(([id, info]) => {
+  EXO_ORDER.forEach((id) => {
+    const info = state.training.history[id];
+    if (!info) return;
     const code = getExoCode(id);
     if (!code) return;
     if (info.bestN1 != null) payload[`${code}_1`] = info.bestN1;
@@ -978,12 +985,14 @@ function buildSkillPayload() {
     ui.skillQrSize.textContent = 'Complète prénom, nom, classe.';
     return null;
   }
-  payload.ct_m = session.durationMinutes;
   payload.ct_b = session.blocks.length;
-  payload.ct_ps = session.practiceSecondsTotal;
-  payload.ct_rs = session.recoverSecondsTotal;
-  Object.values(session.totals || {}).forEach((entry) => {
-    const code = getExoCode(entry.id);
+  payload.ct_m = session.durationMinutes;
+  payload.ct_ps = Number((session.practiceSecondsTotal / 60).toFixed(1));
+  payload.ct_rs = Number((session.recoverSecondsTotal / 60).toFixed(1));
+  EXO_ORDER.forEach((id) => {
+    const entry = session.totals[id];
+    if (!entry) return;
+    const code = getExoCode(id);
     if (!code) return;
     payload[`${code}_l`] = entry.level;
     payload[`${code}_p`] = entry.expected;
@@ -1001,7 +1010,7 @@ function buildBasePayload(mode, suffix) {
     prenom: `${prenom}${suffix}`,
     classe,
   };
-  if (state.student.observer) payload.ct_observer = state.student.observer;
+  if (state.student.observer) payload.observer = state.student.observer;
   return payload;
 }
 
@@ -1131,22 +1140,37 @@ function openScanprofHelp() {
   if (!ui.modalBody || !ui.modal) return;
   ui.modalBody.innerHTML = `
     <div class="scanprof-help">
-      <h3>Codes ScanProf</h3>
-      <p>Pour alléger les QR, les exercices sont abrégés :</p>
-      <ul>
-        <li>bu = Burpees</li>
-        <li>po = Pompes</li>
-        <li>jk = Jumping jack</li>
-        <li>mt = Mountain climbers</li>
-        <li>sq = Squat</li>
-        <li>di = Dips</li>
-        <li>fe = Fentes</li>
-        <li>ra = Rameur</li>
-        <li>cr = Crunch</li>
-      </ul>
-      <p><strong>Training :</strong> bu_1 = score N1, bu_2 = score N2, ct_t = timer (60&nbsp;s).</p>
-      <p><strong>Skill :</strong> bu_l = niveau, bu_p = total prévu, bu_r = total réalisé.</p>
-      <p>Totaux séance : ct_m = minutes, ct_b = blocs, ct_ps = temps de pratique (s), ct_rs = temps de récup (s).</p>
+      <h3>ScanProf – légende</h3>
+      <div style="background:#f1f5f9;border-radius:18px;padding:1rem;margin-bottom:0.75rem;">
+        <h4>Exercices (codes)</h4>
+        <ul>
+          <li>bu = Burpees</li>
+          <li>cr = Crunch</li>
+          <li>di = Dips</li>
+          <li>fe = Fentes</li>
+          <li>jk = Jumping jack</li>
+          <li>mt = Mountain climbers</li>
+          <li>po = Pompes</li>
+          <li>ra = Rameur</li>
+          <li>sq = Squat</li>
+        </ul>
+      </div>
+      <div style="background:#ecfeff;border-radius:18px;padding:1rem;margin-bottom:0.75rem;">
+        <h4>Mode Entraînement</h4>
+        <ul>
+          <li>ct_t = timer (60 s)</li>
+          <li>bu_1 = score N1, bu_2 = score N2 (idem pour chaque code)</li>
+          <li>observer = nom de l’observateur (si renseigné)</li>
+        </ul>
+      </div>
+      <div style="background:#fef9c3;border-radius:18px;padding:1rem;">
+        <h4>Mode Skill</h4>
+        <ul>
+          <li>ct_b = nombre de blocs, ct_m = minutes choisies</li>
+          <li>ct_ps = temps de pratique (minutes), ct_rs = temps de récup (minutes)</li>
+          <li>bu_l = niveau, bu_p = total prévu, bu_r = total réalisé (idem pour chaque code)</li>
+        </ul>
+      </div>
     </div>
   `;
   ui.modal.classList.remove('hidden');
