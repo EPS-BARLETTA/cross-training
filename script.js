@@ -108,6 +108,18 @@ const EXERCISES = [
   },
 ];
 
+const EXO_CODES = {
+  burpees: 'bu',
+  pompes: 'po',
+  'jumping-jack': 'jk',
+  mountain: 'mt',
+  squat: 'sq',
+  dips: 'di',
+  fentes: 'fe',
+  rameur: 'ra',
+  crunch: 'cr',
+};
+
 const defaultState = () => ({
   v: STORAGE_VERSION,
   updatedAt: null,
@@ -199,6 +211,7 @@ function cacheElements() {
   ui.importInput = document.getElementById('import-input');
   ui.resetBtn = document.getElementById('reset-btn');
   ui.skillNewSession = document.getElementById('skill-new-session');
+  ui.scanprofHelp = document.getElementById('scanprof-help');
   ui.modal = document.getElementById('modal');
   ui.modalBody = document.getElementById('modal-body');
   ui.modalClose = document.getElementById('modal-close');
@@ -256,6 +269,7 @@ function bindActions() {
     resetSkillSession('Nouvelle séance Skill prête.');
     persistState();
   });
+  ui.scanprofHelp?.addEventListener('click', openScanprofHelp);
 
   ui.exportBtn.addEventListener('click', exportState);
   ui.importInput.addEventListener('change', importStateFromFile);
@@ -510,12 +524,12 @@ function buildTrainingPayload() {
     ui.trainingQrSize.textContent = 'Enregistre au moins un test.';
     return null;
   }
-  payload.ct_tr_timer = TRAINING_SECONDS;
+  payload.ct_t = TRAINING_SECONDS;
   entries.forEach(([id, info]) => {
-    const slug = slugify(id);
-    if (info.bestN1 != null) payload[`ct_tr_${slug}_n1`] = info.bestN1;
-    if (info.bestN2 != null) payload[`ct_tr_${slug}_n2`] = info.bestN2;
-    if (info.lastAt) payload[`ct_tr_${slug}_last`] = info.lastAt;
+    const code = getExoCode(id);
+    if (!code) return;
+    if (info.bestN1 != null) payload[`${code}_1`] = info.bestN1;
+    if (info.bestN2 != null) payload[`${code}_2`] = info.bestN2;
   });
   return payload;
 }
@@ -964,15 +978,16 @@ function buildSkillPayload() {
     ui.skillQrSize.textContent = 'Complète prénom, nom, classe.';
     return null;
   }
-  payload.ct_minutes = session.durationMinutes;
-  payload.ct_blocks = session.blocks.length;
-  payload.ct_practice_total_s = session.practiceSecondsTotal;
-  payload.ct_recovery_total_s = session.recoverSecondsTotal;
+  payload.ct_m = session.durationMinutes;
+  payload.ct_b = session.blocks.length;
+  payload.ct_ps = session.practiceSecondsTotal;
+  payload.ct_rs = session.recoverSecondsTotal;
   Object.values(session.totals || {}).forEach((entry) => {
-    const slug = slugify(entry.id);
-    payload[`ct_sk_${slug}_lvl`] = entry.level;
-    payload[`ct_sk_${slug}_prev`] = entry.expected;
-    payload[`ct_sk_${slug}_real`] = entry.done;
+    const code = getExoCode(entry.id);
+    if (!code) return;
+    payload[`${code}_l`] = entry.level;
+    payload[`${code}_p`] = entry.expected;
+    payload[`${code}_r`] = entry.done;
   });
   return payload;
 }
@@ -985,8 +1000,6 @@ function buildBasePayload(mode, suffix) {
     nom: ensureNom(state.student.nom),
     prenom: `${prenom}${suffix}`,
     classe,
-    ct_mode: mode,
-    ct_date: new Date().toISOString(),
   };
   if (state.student.observer) payload.ct_observer = state.student.observer;
   return payload;
@@ -1008,18 +1021,18 @@ function renderQr(payload, container, sizeLabel) {
     container.appendChild(warn);
     return;
   }
-  const box = document.createElement('div');
-  box.className = 'qr-box';
-  box.style.padding = '12px';
-  box.style.background = '#fff';
-  container.appendChild(box);
-  new QRCode(box, {
+  const wrapper = document.createElement('div');
+  wrapper.className = 'qr-box';
+  wrapper.style.padding = '16px';
+  wrapper.style.background = '#fff';
+  container.appendChild(wrapper);
+  new QRCode(wrapper, {
     text: toUtf8(json),
-    width: 300,
-    height: 300,
+    width: 420,
+    height: 420,
     colorDark: '#111111',
     colorLight: '#ffffff',
-    correctLevel: QRCode.CorrectLevel?.M ?? 0,
+    correctLevel: QRCode.CorrectLevel?.L ?? 1,
     margin: 2,
   });
   const pre = document.createElement('pre');
@@ -1114,6 +1127,31 @@ function closeModal() {
   ui.modal.classList.add('hidden');
 }
 
+function openScanprofHelp() {
+  if (!ui.modalBody || !ui.modal) return;
+  ui.modalBody.innerHTML = `
+    <div class="scanprof-help">
+      <h3>Codes ScanProf</h3>
+      <p>Pour alléger les QR, les exercices sont abrégés :</p>
+      <ul>
+        <li>bu = Burpees</li>
+        <li>po = Pompes</li>
+        <li>jk = Jumping jack</li>
+        <li>mt = Mountain climbers</li>
+        <li>sq = Squat</li>
+        <li>di = Dips</li>
+        <li>fe = Fentes</li>
+        <li>ra = Rameur</li>
+        <li>cr = Crunch</li>
+      </ul>
+      <p><strong>Training :</strong> bu_1 = score N1, bu_2 = score N2, ct_t = timer (60&nbsp;s).</p>
+      <p><strong>Skill :</strong> bu_l = niveau, bu_p = total prévu, bu_r = total réalisé.</p>
+      <p>Totaux séance : ct_m = minutes, ct_b = blocs, ct_ps = temps de pratique (s), ct_rs = temps de récup (s).</p>
+    </div>
+  `;
+  ui.modal.classList.remove('hidden');
+}
+
 // ------------------ Helpers ------------------
 function isIdentityComplete() {
   const prenom = (state.student.prenom || '').trim();
@@ -1156,6 +1194,13 @@ function formatTime(seconds) {
 
 function slugify(value) {
   return value.replace(/[^a-z0-9]+/gi, '_').toLowerCase();
+}
+
+function getExoCode(id) {
+  if (!id) return '';
+  if (EXO_CODES[id]) return EXO_CODES[id];
+  const slug = slugify(id);
+  return slug ? slug.slice(0, 2) : id.slice(0, 2).toLowerCase();
 }
 
 function getExpected(exerciseId, level) {
