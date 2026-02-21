@@ -98,6 +98,8 @@ body:has(.page.active[data-page='home']) .top-bar {
   font-weight: 600;
   background: rgba(255, 255, 255, 0.08);
   color: var(--color-muted);
+  opacity: 0;
+  pointer-events: none;
 }
 
 .status-pill.ready {
@@ -138,11 +140,25 @@ body:has(.page.active[data-page='home']) .top-bar {
 }
 
 .page {
-  display: none;
+  display: none !important;
 }
 
 .page.active {
-  display: block;
+  display: block !important;
+}
+
+.page.active[data-page='skill_run'] {
+  display: flex !important;
+}
+
+.page[data-page='skill_run'] {
+  min-height: calc(100vh - 2rem);
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.page[data-page='skill_run'] .card.skill-run-card {
+  flex: 1;
 }
 
 .page-enter {
@@ -329,7 +345,7 @@ select:focus {
 }
 
 .practice-box.run .timer-value {
-  font-size: clamp(3.5rem, 10vw, 4.8rem);
+  font-size: clamp(3rem, 8vw, 4.2rem);
   text-align: center;
 }
 
@@ -544,11 +560,15 @@ select:focus {
   margin-bottom: 1rem;
 }
 
+.skill-config-card header h2 {
+  font-size: 2.1rem;
+}
+
 .skill-card,
 .result-card {
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
-  padding: 1.4rem;
+  padding: 1.6rem;
   background: rgba(255, 255, 255, 0.02);
   display: flex;
   flex-direction: column;
@@ -558,7 +578,7 @@ select:focus {
 .skill-card h3,
 .result-card h4 {
   margin: 0;
-  font-size: 1.2rem;
+  font-size: 1.35rem;
 }
 
 .skill-card[data-family='cardio'], .result-card[data-family='cardio'] {
@@ -581,6 +601,16 @@ select:focus {
   background: rgba(244, 169, 64, 0.14);
 }
 
+.skill-card label {
+  font-size: 1.15rem;
+  font-weight: 600;
+}
+
+.skill-card select {
+  font-size: 1.15rem;
+  padding: 1.1rem 1.2rem;
+}
+
 .result-fields {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
@@ -600,6 +630,8 @@ select:focus {
     'results'
     'log';
   gap: 1.5rem;
+  height: 100%;
+  overflow: hidden;
 }
 
 .skill-run-card .practice-box.run {
@@ -614,7 +646,7 @@ select:focus {
 .skill-run-card .results-grid {
   grid-area: results;
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  grid-template-columns: repeat(2, minmax(180px, 1fr));
   gap: 1rem;
 }
 
@@ -634,8 +666,45 @@ select:focus {
 
 .run-controls {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
   gap: 1rem;
+}
+
+@media (max-width: 820px), (max-height: 820px) {
+  .page[data-page='skill_run'] .card.skill-run-card {
+    height: calc(100vh - 9rem);
+    min-height: 520px;
+    padding: 1.8rem;
+  }
+  .skill-run-card {
+    gap: 0.9rem;
+  }
+  .skill-run-card .results-grid {
+    max-height: 320px;
+    overflow-y: auto;
+    padding-right: 0.4rem;
+    grid-template-columns: repeat(2, minmax(150px, 1fr));
+    gap: 0.75rem;
+  }
+  .skill-run-card .session-log {
+    max-height: 160px;
+    overflow-y: auto;
+  }
+  .practice-box.run .timer-value {
+    font-size: clamp(2.4rem, 6vw, 3.3rem);
+  }
+  .run-controls {
+    grid-template-columns: repeat(3, minmax(120px, 1fr));
+  }
+}
+
+@media (max-width: 640px) {
+  .skill-run-card .results-grid {
+    grid-template-columns: repeat(2, minmax(120px, 1fr));
+  }
+  .run-controls {
+    grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
+  }
 }
 
 #skill-reset-session {

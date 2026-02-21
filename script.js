@@ -172,7 +172,6 @@ function init() {
   renderSkillInputs();
   bindActions();
   setupFaqInteractions();
-  updateStatus();
   updateIdentityAccess();
   updateNavigationState();
   if (state.skill.locked) {
@@ -188,7 +187,6 @@ function init() {
 }
 
 function cacheElements() {
-  ui.status = document.getElementById('status-pill');
   ui.first = document.getElementById('student-first');
   ui.last = document.getElementById('student-last');
   ui.classe = document.getElementById('student-class');
@@ -1585,18 +1583,6 @@ function persistState(updateTime = true) {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
   } catch (error) {
     console.warn('Sauvegarde impossible', error);
-  }
-  updateStatus();
-}
-
-function updateStatus() {
-  if (!ui.status) return;
-  if (state.updatedAt) {
-    ui.status.textContent = `Sauvegardé · ${new Date(state.updatedAt).toLocaleString('fr-FR')}`;
-    ui.status.classList.add('ready');
-  } else {
-    ui.status.textContent = 'Modifications locales';
-    ui.status.classList.remove('ready');
   }
 }
 
