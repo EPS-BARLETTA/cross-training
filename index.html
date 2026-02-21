@@ -7,154 +7,237 @@
     <link rel="stylesheet" href="styles.css" />
   </head>
   <body>
-    <main class="app-shell">
-      <header class="hero">
-        <div>
+    <div class="app-shell">
+      <header class="top-bar">
+        <div class="brand">
           <p class="eyebrow">EPS • Carnet hors-ligne</p>
           <h1>Outil Cross Training</h1>
-          <p class="subhead">Deux modes (Entraînement & Skill), QR ScanProf, import/export JSON — fonctionne sans réseau.</p>
         </div>
-        <div id="status-pill" class="status-pill">Non sauvegardé</div>
+        <div class="top-meta">
+          <span id="status-pill" class="status-pill">Non sauvegardé</span>
+          <nav class="global-nav" aria-label="Navigation principale">
+            <button class="nav-link" data-go="home">Accueil</button>
+            <button class="nav-link" data-go="identity">Identité</button>
+            <button class="nav-link" data-go="training" data-requires-identity="true">Entraînement</button>
+            <button class="nav-link" data-go="skill_config" data-requires-identity="true">Skill</button>
+          </nav>
+        </div>
       </header>
 
-      <section class="card identity" aria-labelledby="identity-title">
-        <header>
-          <h2 id="identity-title">Identité élève</h2>
-          <p>Nom obligatoire pour ScanProf (mettre « - » si besoin). Les données sont stockées dans l’iPad (localStorage).</p>
-        </header>
-        <div class="identity-grid">
-          <label>Prénom<input id="student-first" type="text" autocomplete="off" placeholder="Lina" /></label>
-          <label>Initiale du nom<input id="student-last" type="text" autocomplete="off" placeholder="D" maxlength="1" inputmode="text" /></label>
-          <label>Classe<input id="student-class" type="text" autocomplete="off" placeholder="4C" /></label>
-          <label>Observateur<input id="observer" type="text" autocomplete="off" placeholder="Prof / camarade" /></label>
-        </div>
-      </section>
+      <button id="lock-badge" class="lock-badge hidden" type="button">🔒 Verrouillé</button>
 
-      <nav class="tabs" aria-label="Modes">
-        <button class="tab-btn active" data-tab="training">Mode Entraînement</button>
-        <button class="tab-btn" data-tab="skill">Mode Skill</button>
-      </nav>
-
-      <section id="training-panel" class="card tab-panel" data-panel="training">
-        <header>
-          <h2>Entraînement (cours de 1 minute)</h2>
-          <p>Choisis un exercice, lance le chrono 1:00, puis renseigne les répétitions réalisées en N1 et N2. L’app conserve les meilleurs scores et la dernière date.</p>
-        </header>
-
-        <div class="training-active" id="training-active">
-          <div class="active-info">
-            <p class="label">Exercice sélectionné</p>
-            <h3 id="training-active-name">Aucun exercice</h3>
-            <p id="training-active-hint" class="hint">Sélectionne une carte ci-dessous pour commencer.</p>
-            <p id="training-active-meta" class="meta"></p>
+      <!-- Home -->
+      <section class="page active" data-page="home">
+        <div class="card hero-card">
+          <h2>Bienvenue dans l’outil Cross Training</h2>
+          <p>Prépare tes évaluations EPS hors-ligne puis exporte un QR compatible ScanProf.</p>
+          <div class="cta-row">
+            <button class="btn primary" data-go="identity">Démarrer</button>
+            <button class="btn ghost" id="faq-toggle" type="button">Mode d’emploi</button>
           </div>
-          <div class="timer-box">
-            <p class="label">Chrono 1:00</p>
-            <p id="training-timer" class="timer-value">01:00</p>
-            <div class="timer-controls">
-              <button class="btn primary" id="training-start">Start</button>
-              <button class="btn secondary" id="training-pause">Pause</button>
-              <button class="btn ghost" id="training-reset">Reset</button>
+          <div class="faq collapsed" id="home-faq">
+            <div class="faq-item">
+              <button class="faq-question" type="button">Comment travailler en Entraînement ?</button>
+              <div class="faq-answer">
+                <p>Choisis un exercice, lance 1 minute, note les répétitions N1/N2 puis génère le QR depuis l’écran “Fin d’entraînement”.</p>
+              </div>
             </div>
-            <p id="training-timer-hint" class="hint"></p>
-          </div>
-          <div class="result-entry">
-            <label>Répétitions N1<input id="training-input-n1" type="number" min="0" /></label>
-            <label>Répétitions N2<input id="training-input-n2" type="number" min="0" /></label>
-            <button class="btn primary" id="training-save">Enregistrer le score</button>
-            <p id="training-save-status" class="hint"></p>
+            <div class="faq-item">
+              <button class="faq-question" type="button">Comment travailler en Skill ?</button>
+              <div class="faq-answer">
+                <p>Sélectionne 1 exercice par famille, définis la durée puis passe aux observations pour gérer les blocs de 2 minutes.</p>
+              </div>
+            </div>
+            <div class="faq-item">
+              <button class="faq-question" type="button">Comment scanner dans ScanProf ?</button>
+              <div class="faq-answer">
+                <p>Depuis l’app ScanProf > Importer > Scanner, vise le QR généré (Training ou Skill). Les codes courts (bu, jk...) sont détaillés dans “ScanProf – explications”.</p>
+              </div>
+            </div>
+            <div class="faq-item">
+              <button class="faq-question" type="button">Sauvegarder / importer mes données ?</button>
+              <div class="faq-answer">
+                <p>Dans l’écran “Fin d’entraînement”, utilise les boutons Exporter / Importer. Un fichier JSON peut être stocké dans Fichiers ou partagé par AirDrop.</p>
+              </div>
+            </div>
           </div>
         </div>
-
-        <div class="exercise-grid" id="training-grid" role="list"></div>
-
-        <section class="history" aria-labelledby="history-title">
-          <div class="section-head">
-            <h3 id="history-title">Historique (meilleurs scores)</h3>
-            <p>Affiche la meilleure valeur enregistrée en N1/N2 et la dernière date saisie.</p>
-          </div>
-          <div id="training-history" class="history-list"></div>
-        </section>
-
-        <section class="qr-block">
-          <div class="qr-actions">
-            <button class="btn primary" id="training-qr-btn">Générer QR Entraînement</button>
-            <p id="training-qr-size" class="hint"></p>
-          </div>
-          <div id="training-qr-output" class="qr-output"></div>
-        </section>
       </section>
 
-      <section id="skill-panel" class="card tab-panel hidden" data-panel="skill">
-        <header>
-          <h2>Mode Skill (blocs de 2 minutes)</h2>
-          <p>Construit un skill (1 exercice par famille) puis enchaîne des blocs de 2 minutes. Le chrono mesure le temps de pratique et la récupération est calculée automatiquement.</p>
-        </header>
-
-        <div class="skill-builder" id="skill-builder"></div>
-        <div class="skill-toolbar">
-          <button class="btn ghost" id="skill-new-session" type="button">Nouvelle séance Skill</button>
+      <!-- Identity -->
+      <section class="page" data-page="identity">
+        <div class="card identity-card">
+          <header>
+            <h2>Identité élève</h2>
+            <p id="identity-hint" class="hint">Saisis prénom, initiale et classe pour activer les modes.</p>
+          </header>
+          <div class="identity-grid">
+            <label>Prénom<input id="student-first" type="text" autocomplete="off" placeholder="Lina" /></label>
+            <label>Initiale du nom<input id="student-last" type="text" autocomplete="off" placeholder="D" maxlength="1" inputmode="text" /></label>
+            <label>Classe<input id="student-class" type="text" autocomplete="off" placeholder="4C" /></label>
+            <label>Observateur<input id="observer" type="text" autocomplete="off" placeholder="Prof / camarade" /></label>
+          </div>
+          <div class="mode-choice">
+            <button class="btn primary" id="go-training" disabled>Mode Entraînement</button>
+            <button class="btn primary" id="go-skill" disabled>Mode Skill</button>
+            <button class="btn ghost" data-go="home">Retour accueil</button>
+          </div>
         </div>
+      </section>
 
-        <div class="skill-settings">
-          <label>Durée totale
-            <select id="skill-duration">
-              <option value="6">6 minutes (3 blocs)</option>
-              <option value="10" selected>10 minutes (5 blocs)</option>
-              <option value="16">16 minutes (8 blocs)</option>
-              <option value="20">20 minutes (10 blocs)</option>
-            </select>
-          </label>
-          <div class="timer-box practice-box">
+      <!-- Training live -->
+      <section class="page" data-page="training">
+        <div class="page-nav">
+          <button class="btn ghost" data-go="home">Accueil</button>
+          <button class="btn ghost" data-go="identity">Identité</button>
+          <button class="btn secondary" id="training-finish" type="button">Fin d’entraînement</button>
+        </div>
+        <div class="card" id="training-panel">
+          <header>
+            <h2>Entraînement (cours de 1 minute)</h2>
+            <p>Choisis un exercice, lance le chrono, renseigne N1/N2.</p>
+          </header>
+          <div class="training-active" id="training-active">
+            <div class="active-info">
+              <p class="label">Exercice sélectionné</p>
+              <h3 id="training-active-name">Aucun exercice</h3>
+              <p id="training-active-hint" class="hint">Sélectionne une carte ci-dessous pour commencer.</p>
+              <p id="training-active-meta" class="meta"></p>
+            </div>
+            <div class="timer-box">
+              <p class="label">Chrono 1:00</p>
+              <p id="training-timer" class="timer-value">01:00</p>
+              <div class="timer-controls">
+                <button class="btn primary" id="training-start">Start</button>
+                <button class="btn secondary" id="training-pause">Pause</button>
+                <button class="btn ghost" id="training-reset">Reset</button>
+              </div>
+              <p id="training-timer-hint" class="hint"></p>
+            </div>
+            <div class="result-entry">
+              <label>Répétitions N1<input id="training-input-n1" type="number" min="0" /></label>
+              <label>Répétitions N2<input id="training-input-n2" type="number" min="0" /></label>
+              <button class="btn primary" id="training-save">Enregistrer le score</button>
+              <p id="training-save-status" class="hint"></p>
+            </div>
+          </div>
+          <div class="exercise-grid" id="training-grid"></div>
+        </div>
+      </section>
+
+      <!-- Training end -->
+      <section class="page" data-page="training_end">
+        <div class="page-nav">
+          <button class="btn ghost" data-go="training">← Retour entraînement</button>
+          <button class="btn ghost" data-go="home">Accueil</button>
+        </div>
+        <div class="card stack">
+          <section class="history" aria-labelledby="history-title">
+            <div class="section-head">
+              <h3 id="history-title">Historique (meilleurs scores)</h3>
+              <p>Records N1/N2 + dernière date.</p>
+            </div>
+            <div id="training-history" class="history-list"></div>
+          </section>
+          <section class="qr-block">
+            <div class="qr-actions">
+              <button class="btn primary" id="training-qr-btn">Générer QR Entraînement</button>
+              <p id="training-qr-size" class="hint"></p>
+            </div>
+            <div id="training-qr-output" class="qr-output"></div>
+          </section>
+          <section class="actions-card">
+            <header>
+              <h3>Sauvegarde & outils</h3>
+              <p>Exporter/Importer pour éviter les pertes.</p>
+            </header>
+            <div class="action-row">
+              <button class="btn secondary" id="export-btn">Exporter mes données</button>
+              <label class="btn ghost file-label">Importer<input type="file" id="import-input" accept="application/json" hidden /></label>
+              <button class="btn ghost" id="reset-btn">Reset total</button>
+              <button class="btn ghost" id="scanprof-help" type="button">ℹ️ ScanProf – explications</button>
+            </div>
+          </section>
+        </div>
+      </section>
+
+      <!-- Skill config -->
+      <section class="page" data-page="skill_config">
+        <div class="page-nav">
+          <button class="btn ghost" data-go="home">Accueil</button>
+          <button class="btn ghost" data-go="identity">Identité</button>
+        </div>
+        <div class="card skill-config-card">
+          <header>
+            <h2>Configurer ton Skill</h2>
+            <p>Sélectionne 1 exercice par famille puis choisis la durée.</p>
+          </header>
+          <div class="skill-builder" id="skill-builder"></div>
+          <div class="skill-config-row">
+            <label>Durée totale
+              <select id="skill-duration">
+                <option value="6">6 minutes (3 blocs)</option>
+                <option value="10" selected>10 minutes (5 blocs)</option>
+                <option value="16">16 minutes (8 blocs)</option>
+                <option value="20">20 minutes (10 blocs)</option>
+              </select>
+            </label>
+            <button class="btn primary" id="skill-config-next">Passer aux observations</button>
+          </div>
+          <button class="btn ghost" id="skill-new-session" type="button">Réinitialiser la configuration</button>
+        </div>
+      </section>
+
+      <!-- Skill run -->
+      <section class="page" data-page="skill_run">
+        <div class="page-nav">
+          <button class="btn ghost" data-go="skill_config">← Configuration</button>
+        </div>
+        <div class="card skill-run-card">
+          <div class="timer-box practice-box run">
             <p class="label">Chrono pratique</p>
-            <p id="skill-practice-timer" class="timer-value">00:00</p>
+            <p id="skill-practice-timer" class="timer-value big">00:00</p>
             <p id="skill-block-counter" class="hint">Bloc 0/0</p>
-            <div class="timer-controls">
-              <button class="btn primary" id="skill-start" type="button">Démarrer bloc</button>
-              <button class="btn secondary" id="skill-pause">Pause</button>
-              <button class="btn secondary" id="skill-end-block">Bloc terminé</button>
-              <button class="btn primary" id="skill-validate-block" type="button">Valider bloc</button>
-              <button class="btn ghost" id="skill-reset">Reset chrono</button>
-            </div>
-            <p id="skill-timer-status" class="hint"></p>
           </div>
-        </div>
-
-        <section class="results" aria-labelledby="results-title">
-          <div class="section-head">
-            <h3 id="results-title">Observations bloc en cours</h3>
-            <p>Renseigne les répétitions prévues / réalisées pour chaque exercice puis valide le bloc.</p>
+          <div class="run-controls">
+            <button class="btn btn-green" id="skill-start" type="button">Démarrer bloc</button>
+            <button class="btn btn-orange" id="skill-end-block" type="button">Bloc terminé</button>
+            <button class="btn btn-blue" id="skill-validate-block" type="button">Valider bloc</button>
           </div>
-          <div id="skill-results-grid" class="results-grid"></div>
+          <button class="btn btn-red" id="skill-reset-session" type="button">Reset séance</button>
+          <p id="skill-timer-status" class="hint"></p>
+          <p id="skill-save-status" class="hint"></p>
+          <div class="results-grid" id="skill-results-grid"></div>
           <div class="block-actions">
             <button class="btn ghost" id="skill-reset-block">Reset bloc</button>
           </div>
-          <p id="skill-save-status" class="hint"></p>
           <div id="skill-session-log" class="session-log"></div>
-        </section>
-
-        <section class="qr-block">
-          <div class="qr-actions">
-            <button class="btn primary" id="skill-qr-btn">Générer QR Skill</button>
-            <p id="skill-qr-size" class="hint"></p>
-          </div>
-          <div id="skill-qr-output" class="qr-output"></div>
-        </section>
-      </section>
-
-      <section class="card actions">
-        <header>
-          <h2>Sauvegarde & outils</h2>
-          <p>Exporter/Importer un fichier JSON pour éviter les pertes (avant changement d’iPad).</p>
-        </header>
-        <div class="action-row">
-          <button class="btn secondary" id="export-btn">Exporter mes données</button>
-          <label class="btn ghost file-label">Importer<input type="file" id="import-input" accept="application/json" hidden /></label>
-          <button class="btn ghost" id="reset-btn">Reset total</button>
-          <button class="btn ghost" id="scanprof-help" type="button">ℹ️ ScanProf – explications</button>
         </div>
       </section>
-    </main>
+
+      <!-- Skill QR -->
+      <section class="page" data-page="skill_qr">
+        <div class="page-nav">
+          <button class="btn ghost" data-go="skill_run">← Retour observations</button>
+        </div>
+        <div class="card">
+          <header>
+            <h2>QR Skill</h2>
+            <p>Scanne dans ScanProf dès que possible.</p>
+          </header>
+          <section class="qr-block">
+            <div class="qr-actions">
+              <button class="btn primary" id="skill-qr-btn">Régénérer le QR</button>
+              <p id="skill-qr-size" class="hint"></p>
+            </div>
+            <div id="skill-qr-output" class="qr-output"></div>
+          </section>
+          <div class="page-nav">
+            <button class="btn primary" id="skill-finish-home" type="button">Terminer et revenir à l’accueil</button>
+          </div>
+        </div>
+      </section>
+    </div>
 
     <div id="modal" class="modal hidden" role="dialog" aria-modal="true">
       <div class="modal-card">

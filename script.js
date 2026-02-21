@@ -7,6 +7,10 @@ const BLOCK_DURATION_SECONDS = 120;
 const ALLOWED_SKILL_DURATIONS = [6, 10, 16, 20];
 const PLACEHOLDER_IMG =
   "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='320' height='200'><rect width='320' height='200' rx='24' fill='%23e2e8f0'/><text x='50%' y='50%' font-family='Inter,Arial' font-size='18' fill='%2394a3b8' text-anchor='middle' dominant-baseline='middle'>Visuel manquant</text></svg>";
+const PAGE_HOME = 'home';
+const SKILL_LOCK_PAGES = new Set(['skill_run', 'skill_qr']);
+const MINUTES_TOLERANCE = 0.2;
+const PREFERS_REDUCED_MOTION = typeof window !== 'undefined' && window.matchMedia ? window.matchMedia('(prefers-reduced-motion: reduce)') : null;
 
 const FAMILIES = [
   { id: 'cardio', label: 'Cardio' },
@@ -143,10 +147,13 @@ const defaultState = () => ({
     },
     session: null,
     lastSession: null,
+    locked: false,
   },
 });
 
 let state = loadState();
+let currentPage = PAGE_HOME;
+let skillHistoryLocked = false;
 const ui = {};
 const trainingTimer = { running: false, remaining: TRAINING_SECONDS, interval: null };
 const skillPracticeTimer = { running: false, seconds: 0, interval: null };
@@ -163,8 +170,20 @@ function init() {
   renderSkillBuilder();
   renderSkillInputs();
   bindActions();
+  setupFaqInteractions();
   updateStatus();
-  openTab('training');
+  updateIdentityAccess();
+  updateNavigationState();
+  if (state.skill.locked) {
+    if (state.skill.lastSession && !state.skill.session) {
+      lockSkillMode(true);
+      goToPage('skill_qr', { force: true });
+    } else {
+      goToPage('skill_run', { force: true });
+    }
+  } else {
+    goToPage(PAGE_HOME, { force: true });
+  }
 }
 
 function cacheElements() {
@@ -173,8 +192,13 @@ function cacheElements() {
   ui.last = document.getElementById('student-last');
   ui.classe = document.getElementById('student-class');
   ui.observer = document.getElementById('observer');
-  ui.tabButtons = Array.from(document.querySelectorAll('.tab-btn'));
-  ui.panels = Array.from(document.querySelectorAll('.tab-panel'));
+  ui.pages = Array.from(document.querySelectorAll('.page'));
+  ui.navButtons = Array.from(document.querySelectorAll('[data-go]'));
+  ui.lockBadge = document.getElementById('lock-badge');
+  ui.identityHint = document.getElementById('identity-hint');
+  ui.goTraining = document.getElementById('go-training');
+  ui.goSkill = document.getElementById('go-skill');
+  ui.trainingFinish = document.getElementById('training-finish');
   ui.trainingGrid = document.getElementById('training-grid');
   ui.trainingHistory = document.getElementById('training-history');
   ui.trainingActiveName = document.getElementById('training-active-name');
@@ -200,7 +224,6 @@ function cacheElements() {
   ui.skillStart = document.getElementById('skill-start');
   ui.skillPause = document.getElementById('skill-pause');
   ui.skillEndBlock = document.getElementById('skill-end-block');
-  ui.skillReset = document.getElementById('skill-reset');
   ui.skillResultsGrid = document.getElementById('skill-results-grid');
   ui.skillValidate = document.getElementById('skill-validate-block');
   ui.skillResetBlock = document.getElementById('skill-reset-block');
@@ -209,11 +232,17 @@ function cacheElements() {
   ui.skillQrBtn = document.getElementById('skill-qr-btn');
   ui.skillQrOutput = document.getElementById('skill-qr-output');
   ui.skillQrSize = document.getElementById('skill-qr-size');
+  ui.skillConfigNext = document.getElementById('skill-config-next');
+  ui.skillResetSession = document.getElementById('skill-reset-session');
+  ui.skillNewSession = document.getElementById('skill-new-session');
+  ui.skillFinishHome = document.getElementById('skill-finish-home');
   ui.exportBtn = document.getElementById('export-btn');
   ui.importInput = document.getElementById('import-input');
   ui.resetBtn = document.getElementById('reset-btn');
-  ui.skillNewSession = document.getElementById('skill-new-session');
   ui.scanprofHelp = document.getElementById('scanprof-help');
+  ui.faqToggle = document.getElementById('faq-toggle');
+  ui.homeFaq = document.getElementById('home-faq');
+  ui.faqQuestions = Array.from(document.querySelectorAll('.faq-question'));
   ui.modal = document.getElementById('modal');
   ui.modalBody = document.getElementById('modal-body');
   ui.modalClose = document.getElementById('modal-close');
@@ -229,9 +258,7 @@ function bindIdentity() {
     if (!el) return;
     el.value = key === 'nom' ? normalizeInitial(state.student[key]) : state.student[key] || '';
     if (key === 'nom') {
-      el.addEventListener('focus', () => {
-        el.select();
-      });
+      el.addEventListener('focus', () => el.select());
     }
     el.addEventListener('input', () => {
       if (key === 'nom') {
@@ -242,17 +269,164 @@ function bindIdentity() {
         state.student[key] = el.value.trim();
       }
       persistState();
+      updateIdentityAccess();
+      updateNavigationState();
     });
   });
 }
 
 function bindNavigation() {
-  ui.tabButtons.forEach((btn) => {
-    btn.addEventListener('click', () => openTab(btn.dataset.tab));
+  ui.navButtons?.forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const target = btn.dataset.go;
+      if (!target) return;
+      const needsIdentity = btn.dataset.requiresIdentity === 'true';
+      if (needsIdentity && !isIdentityComplete()) {
+        alert('Complète d’abord prénom, initiale et classe.');
+        goToPage('identity');
+        return;
+      }
+      goToPage(target);
+    });
   });
 }
 
+function setupFaqInteractions() {
+  ui.faqToggle?.addEventListener('click', () => {
+    ui.homeFaq?.classList.toggle('collapsed');
+  });
+  ui.faqQuestions?.forEach((question) => {
+    question.addEventListener('click', () => {
+      question.parentElement?.classList.toggle('open');
+    });
+  });
+}
+
+function updateIdentityAccess() {
+  const ready = isIdentityComplete();
+  if (ui.goTraining) ui.goTraining.disabled = !ready;
+  if (ui.goSkill) ui.goSkill.disabled = !ready;
+  if (ui.identityHint) {
+    ui.identityHint.textContent = ready
+      ? 'Identité validée — choisis ton mode.'
+      : 'Saisis prénom, initiale et classe pour activer les modes.';
+  }
+}
+
+function updateNavigationState() {
+  const ready = isIdentityComplete();
+  const lockActive = state.skill.locked && SKILL_LOCK_PAGES.has(currentPage);
+  ui.navButtons?.forEach((btn) => {
+    const needsIdentity = btn.dataset.requiresIdentity === 'true';
+    const target = btn.dataset.go;
+    const blockedByLock = lockActive && target && !SKILL_LOCK_PAGES.has(target);
+    const disabled = Boolean((needsIdentity && !ready) || blockedByLock);
+    btn.disabled = disabled;
+    btn.classList.toggle('is-disabled', disabled);
+  });
+}
+
+function updateSkillConfigState() {
+  if (ui.skillConfigNext) {
+    ui.skillConfigNext.disabled = !isSkillReady();
+  }
+}
+
+function goToPage(name, options = {}) {
+  if (!name) return;
+  const leavingLocked =
+    state.skill.locked && SKILL_LOCK_PAGES.has(currentPage) && !SKILL_LOCK_PAGES.has(name) && !options.force;
+  if (leavingLocked) {
+    if (ui.skillTimerStatus) {
+      ui.skillTimerStatus.textContent = 'Séance verrouillée : utilise le badge pour quitter.';
+    }
+    alert('Séance Skill verrouillée : utilise le badge pour quitter ou termine la séance.');
+    return;
+  }
+  if (name === 'skill_run' && !isSkillReady() && !options.force) {
+    alert('Choisis d’abord un exercice dans chaque famille.');
+    return;
+  }
+  const target = ui.pages?.find((section) => section.dataset.page === name);
+  if (!target) return;
+  ui.pages.forEach((section) => section.classList.toggle('active', section === target));
+  if (!PREFERS_REDUCED_MOTION?.matches) {
+    target.classList.add('page-enter');
+    setTimeout(() => target.classList.remove('page-enter'), 220);
+  }
+  currentPage = name;
+  if (name === 'skill_run') {
+    ensureSkillSession();
+    lockSkillMode();
+  }
+  updateNavigationState();
+  updateIdentityAccess();
+  updateLockBadge();
+}
+
+function lockSkillMode(fromLoad = false) {
+  if (!state.skill.locked) {
+    state.skill.locked = true;
+    if (!fromLoad) persistState(false);
+  }
+  window.addEventListener('beforeunload', handleSkillBeforeUnload);
+  window.addEventListener('popstate', handleSkillPopState);
+  if (!skillHistoryLocked) {
+    try {
+      history.pushState({ skillLock: true }, document.title, window.location.href);
+      skillHistoryLocked = true;
+    } catch (error) {
+      console.warn('Impossible d’actualiser l’historique', error);
+    }
+  }
+  updateLockBadge();
+  updateNavigationState();
+}
+
+function unlockSkillMode(options = {}) {
+  const { silent } = options;
+  if (state.skill.locked) {
+    state.skill.locked = false;
+    if (!silent) persistState(false);
+  }
+  window.removeEventListener('beforeunload', handleSkillBeforeUnload);
+  window.removeEventListener('popstate', handleSkillPopState);
+  skillHistoryLocked = false;
+  updateLockBadge();
+  updateNavigationState();
+}
+
+function handleSkillBeforeUnload(event) {
+  if (!state.skill.locked) return;
+  event.preventDefault();
+  event.returnValue = 'Séance Skill en cours.';
+}
+
+function handleSkillPopState() {
+  if (!state.skill.locked) return;
+  alert('Séance Skill verrouillée : utilise le badge pour quitter.');
+  try {
+    history.pushState({ skillLock: true }, document.title, window.location.href);
+  } catch (error) {
+    console.warn('Navigation verrouillée', error);
+  }
+}
+
+function updateLockBadge() {
+  if (!ui.lockBadge) return;
+  ui.lockBadge.classList.toggle('hidden', !state.skill.locked);
+}
+
 function bindActions() {
+  ui.goTraining?.addEventListener('click', () => {
+    if (!isIdentityComplete()) return;
+    goToPage('training');
+  });
+  ui.goSkill?.addEventListener('click', () => {
+    if (!isIdentityComplete()) return;
+    goToPage('skill_config');
+  });
+  ui.trainingFinish?.addEventListener('click', () => goToPage('training_end'));
   ui.trainingStart.addEventListener('click', startTrainingTimer);
   ui.trainingPause.addEventListener('click', () => pauseTrainingTimer(true));
   ui.trainingReset.addEventListener('click', resetTrainingTimer);
@@ -260,18 +434,36 @@ function bindActions() {
   ui.trainingQrBtn.addEventListener('click', handleTrainingQr);
 
   ui.skillStart?.addEventListener('click', startSkillPractice);
-  ui.skillPause?.addEventListener('click', () => pauseSkillPractice(true));
   ui.skillEndBlock?.addEventListener('click', () => completeSkillPractice(false));
-  ui.skillReset?.addEventListener('click', () => resetSkillPractice(true));
   ui.skillDuration?.addEventListener('change', handleSkillDurationChange);
   ui.skillValidate?.addEventListener('click', validateSkillBlock);
   ui.skillResetBlock?.addEventListener('click', () => resetSkillInputs(true));
   ui.skillQrBtn?.addEventListener('click', handleSkillQr);
+  ui.skillConfigNext?.addEventListener('click', () => {
+    if (!isIdentityComplete()) {
+      alert('Complète d’abord l’identité.');
+      goToPage('identity');
+      return;
+    }
+    if (!isSkillReady()) {
+      alert('Choisis un exercice dans chaque famille.');
+      return;
+    }
+    ensureSkillSession();
+    goToPage('skill_run');
+  });
+  ui.skillResetSession?.addEventListener('click', () => {
+    openSkillResetConfirm();
+  });
   ui.skillNewSession?.addEventListener('click', () => {
-    resetSkillSession('Nouvelle séance Skill prête.');
-    persistState();
+    resetSkillSession('Nouvelle séance prête.', { unlock: true });
+  });
+  ui.skillFinishHome?.addEventListener('click', () => {
+    unlockSkillMode();
+    goToPage(PAGE_HOME, { force: true });
   });
   ui.scanprofHelp?.addEventListener('click', openScanprofHelp);
+  ui.lockBadge?.addEventListener('click', openLockExitConfirm);
 
   ui.exportBtn.addEventListener('click', exportState);
   ui.importInput.addEventListener('change', importStateFromFile);
@@ -281,11 +473,6 @@ function bindActions() {
   ui.modal.addEventListener('click', (event) => {
     if (event.target === ui.modal) closeModal();
   });
-}
-
-function openTab(tab) {
-  ui.tabButtons.forEach((btn) => btn.classList.toggle('active', btn.dataset.tab === tab));
-  ui.panels.forEach((panel) => panel.classList.toggle('hidden', panel.dataset.panel !== tab));
 }
 
 // ------------------ Training ------------------
@@ -548,6 +735,7 @@ function renderSkillBuilder() {
   FAMILIES.forEach((family) => {
     const card = document.createElement('div');
     card.className = 'skill-card';
+    card.dataset.family = family.id;
     const title = document.createElement('h3');
     title.textContent = family.label;
     card.appendChild(title);
@@ -563,7 +751,7 @@ function renderSkillBuilder() {
     select.addEventListener('change', () => {
       state.skill.selection[family.id] = select.value;
       state.skill.inputs[family.id] = { expected: '', done: '' };
-      resetSkillSession('Sélection modifiée, séance réinitialisée.');
+      resetSkillSession('Sélection modifiée, séance réinitialisée.', { unlock: true });
       renderSkillInputs();
       persistState(false);
     });
@@ -573,13 +761,14 @@ function renderSkillBuilder() {
     levelSelect.value = String(state.skill.levels[family.id] || 1);
     levelSelect.addEventListener('change', () => {
       state.skill.levels[family.id] = Number(levelSelect.value) || 1;
-      resetSkillSession('Niveau modifié, séance réinitialisée.');
+      resetSkillSession('Niveau modifié, séance réinitialisée.', { unlock: true });
       renderSkillInputs();
       persistState(false);
     });
     card.appendChild(levelSelect);
     ui.skillBuilder.appendChild(card);
   });
+  updateSkillConfigState();
 }
 
 function renderSkillInputs() {
@@ -632,11 +821,12 @@ function renderSkillInputs() {
   });
   renderSkillStatus();
   updateSkillControlState();
+  updateSkillConfigState();
 }
 
 function handleSkillDurationChange() {
   state.skill.duration = sanitizeSkillDuration(Number(ui.skillDuration.value) || 10);
-  resetSkillSession('Durée modifiée, séance réinitialisée.');
+  resetSkillSession('Durée modifiée, séance réinitialisée.', { unlock: true });
   persistState(false);
 }
 
@@ -743,17 +933,11 @@ function updateSkillControlState() {
   if (ui.skillStart) {
     ui.skillStart.disabled = !ready || pending || skillPracticeTimer.running || sessionComplete;
   }
-  if (ui.skillPause) {
-    ui.skillPause.disabled = !skillPracticeTimer.running;
-  }
   if (ui.skillEndBlock) {
     ui.skillEndBlock.disabled = pending || sessionComplete || (!skillPracticeTimer.running && !hasTime);
   }
   if (ui.skillValidate) {
     ui.skillValidate.disabled = !pending;
-  }
-  if (ui.skillReset) {
-    ui.skillReset.disabled = pending;
   }
 }
 
@@ -775,6 +959,7 @@ function ensureSkillSession() {
   ui.skillTimerStatus.textContent = 'Séance démarrée : lance le bloc 1.';
   updateSkillBlockCounter();
   updateSkillControlState();
+  persistState(false);
 }
 
 function updateSkillBlockCounter() {
@@ -847,14 +1032,14 @@ function renderSkillStatus() {
 
 function validateSkillBlock() {
   if (!isSkillReady()) {
-    ui.skillSaveStatus.textContent = 'Sélectionne un exercice dans chaque famille.';
+    setSkillSaveStatus('Sélectionne un exercice dans chaque famille.');
     return;
   }
   ensureSkillSession();
   const session = state.skill.session;
   if (!session) return;
   if (!session.pendingBlock) {
-    ui.skillSaveStatus.textContent = 'Termine le bloc (chrono) avant de valider.';
+    setSkillSaveStatus('Termine le bloc (chrono) avant de valider.');
     return;
   }
   const block = {
@@ -879,7 +1064,7 @@ function validateSkillBlock() {
     state.skill.inputs[family.id].done = '';
   });
   if (!hasData) {
-    ui.skillSaveStatus.textContent = 'Renseigne au moins un exercice avant de valider.';
+    setSkillSaveStatus('Renseigne au moins un exercice avant de valider.');
     return;
   }
   session.blocks.push(block);
@@ -892,7 +1077,7 @@ function validateSkillBlock() {
     finalizeSkillSession();
   } else {
     session.currentBlock = completedBlocks + 1;
-    ui.skillSaveStatus.textContent = `Bloc ${completedBlocks} enregistré. Bloc ${session.currentBlock}/${session.totalBlocks} prêt.`;
+    setSkillSaveStatus(`Bloc ${completedBlocks} enregistré. Bloc ${session.currentBlock}/${session.totalBlocks} prêt.`);
     skillPracticeTimer.seconds = 0;
     updateSkillPracticeDisplay();
     updateSkillBlockCounter();
@@ -927,7 +1112,7 @@ function finalizeSkillSession() {
     blocks: session.blocks,
     selection: { ...state.skill.selection },
   };
-  ui.skillSaveStatus.textContent = 'Séance terminée ✔️';
+  setSkillSaveStatus('Séance terminée ✔️');
   state.skill.session = null;
   pauseSkillPractice(false);
   skillPracticeTimer.seconds = 0;
@@ -937,6 +1122,7 @@ function finalizeSkillSession() {
   renderSkillInputs();
   ui.skillTimerStatus.textContent = 'Séance terminée. Génère le QR ou lance une nouvelle séance.';
   updateSkillControlState();
+  showSkillCompletionModal();
 }
 
 function resetSkillInputs(clearValues) {
@@ -954,18 +1140,25 @@ function resetSkillInputs(clearValues) {
   renderSkillInputs();
 }
 
-function resetSkillSession(message) {
-  if (state.skill.session) {
-    state.skill.session = null;
-    ui.skillSaveStatus.textContent = message || 'Séance réinitialisée.';
-  } else if (message) {
-    ui.skillSaveStatus.textContent = message;
+function resetSkillSession(message, options = {}) {
+  const { unlock = false, clearLast = true } = options;
+  if (message) {
+    setSkillSaveStatus(message);
   }
-  state.skill.lastSession = null;
+  state.skill.session = null;
+  if (clearLast) state.skill.lastSession = null;
+  pauseSkillPractice(false);
   skillPracticeTimer.seconds = 0;
-  resetSkillPractice(true);
+  updateSkillPracticeDisplay();
+  if (ui.skillTimerStatus) ui.skillTimerStatus.textContent = '';
+  if (unlock) unlockSkillMode({ silent: true });
+  FAMILIES.forEach((family) => {
+    state.skill.inputs[family.id] = { expected: '', done: '' };
+  });
   persistState(false);
   renderSkillInputs();
+  renderSkillStatus();
+  updateSkillBlockCounter();
 }
 
 function handleSkillQr() {
@@ -987,8 +1180,15 @@ function buildSkillPayload() {
   }
   payload.ct_b = session.blocks.length;
   payload.ct_m = session.durationMinutes;
-  payload.ct_ps = Number((session.practiceSecondsTotal / 60).toFixed(1));
-  payload.ct_rs = Number((session.recoverSecondsTotal / 60).toFixed(1));
+  const psMinutes = session.practiceSecondsTotal / 60;
+  const rsMinutes = session.recoverSecondsTotal / 60;
+  let psRounded = roundToOne(psMinutes);
+  let rsRounded = roundToOne(rsMinutes);
+  if (Math.abs(psRounded + rsRounded - payload.ct_m) > MINUTES_TOLERANCE) {
+    rsRounded = roundToOne(Math.max(0, payload.ct_m - psRounded));
+  }
+  payload.ct_ps = psRounded;
+  payload.ct_rs = rsRounded;
   EXO_ORDER.forEach((id) => {
     const entry = session.totals[id];
     if (!entry) return;
@@ -1077,6 +1277,7 @@ function importStateFromFile(event) {
       const parsed = JSON.parse(reader.result);
       if (!parsed.v) parsed.v = 1;
       state = mergeState(parsed);
+      unlockSkillMode({ silent: true });
       persistState();
       resetSkillPractice(true);
       renderTrainingGrid();
@@ -1084,7 +1285,7 @@ function importStateFromFile(event) {
       renderSkillBuilder();
       renderSkillInputs();
       ui.skillSessionLog.innerHTML = '<p class="hint">Sélectionne la durée pour commencer.</p>';
-      openTab('training');
+      goToPage('training', { force: true });
       alert('Sauvegarde importée.');
     } catch (error) {
       alert('Import impossible : ' + error.message);
@@ -1099,12 +1300,13 @@ function resetAll() {
   if (!confirm('Effacer toutes les données locales ?')) return;
   state = defaultState();
   persistState();
+  unlockSkillMode({ silent: true });
   renderTrainingGrid();
   renderTrainingHistory();
   renderSkillBuilder();
   renderSkillInputs();
   ui.skillSessionLog.innerHTML = '<p class="hint">Sélectionne la durée pour commencer.</p>';
-  openTab('training');
+  goToPage(PAGE_HOME, { force: true });
 }
 
 // ------------------ Modal ------------------
@@ -1176,11 +1378,86 @@ function openScanprofHelp() {
   ui.modal.classList.remove('hidden');
 }
 
+function openLockExitConfirm() {
+  if (!state.skill.locked || !ui.modal || !ui.modalBody) return;
+  ui.modalBody.innerHTML = `
+    <div class="lock-confirm">
+      <h3>Quitter la séance Skill ?</h3>
+      <p>Tout l’historique non exporté sera supprimé.</p>
+      <div class="confirm-actions">
+        <button class="btn primary" id="lock-exit-yes">Oui, quitter</button>
+        <button class="btn ghost" id="lock-exit-no">Annuler</button>
+      </div>
+    </div>`;
+  ui.modal.classList.remove('hidden');
+  document.getElementById('lock-exit-yes')?.addEventListener('click', () => {
+    closeModal();
+    resetSkillSession('Séance interrompue.', { unlock: true });
+    goToPage(PAGE_HOME, { force: true });
+  });
+  document.getElementById('lock-exit-no')?.addEventListener('click', closeModal);
+}
+
+function openSkillResetConfirm() {
+  if (!ui.modal || !ui.modalBody) {
+    if (confirm('Réinitialiser complètement la séance Skill ?')) {
+      resetSkillSession('Séance réinitialisée.', { unlock: true });
+      goToPage('skill_config', { force: true });
+    }
+    return;
+  }
+  ui.modalBody.innerHTML = `
+    <div class="lock-confirm">
+      <h3>Reset séance Skill</h3>
+      <p>Attention, blocs et résultats seront effacés.</p>
+      <div class="confirm-actions">
+        <button class="btn primary" id="skill-reset-confirm">Oui, effacer</button>
+        <button class="btn ghost" id="skill-reset-cancel">Annuler</button>
+      </div>
+    </div>`;
+  ui.modal.classList.remove('hidden');
+  document.getElementById('skill-reset-confirm')?.addEventListener('click', () => {
+    closeModal();
+    resetSkillSession('Séance réinitialisée.', { unlock: true });
+    goToPage('skill_config', { force: true });
+  });
+  document.getElementById('skill-reset-cancel')?.addEventListener('click', closeModal);
+}
+
+function showSkillCompletionModal() {
+  if (!ui.modal || !ui.modalBody) {
+    goToPage('skill_qr');
+    return;
+  }
+  ui.modalBody.innerHTML = `
+    <div class="lock-confirm">
+      <h3>Séance terminée</h3>
+      <p>Vérifie le QR Skill avant de quitter le gymnase.</p>
+      <div class="confirm-actions">
+        <button class="btn primary" id="skill-view-qr">Voir le QR</button>
+        <button class="btn ghost" id="skill-close-modal">Fermer</button>
+      </div>
+    </div>`;
+  ui.modal.classList.remove('hidden');
+  document.getElementById('skill-view-qr')?.addEventListener('click', () => {
+    closeModal();
+    goToPage('skill_qr');
+  });
+  document.getElementById('skill-close-modal')?.addEventListener('click', closeModal);
+}
+
+function setSkillSaveStatus(value) {
+  if (ui.skillSaveStatus) {
+    ui.skillSaveStatus.textContent = value || '';
+  }
+}
+
 // ------------------ Helpers ------------------
 function isIdentityComplete() {
   const prenom = (state.student.prenom || '').trim();
   const classe = (state.student.classe || '').trim();
-  return Boolean(prenom && classe && ensureNom(state.student.nom));
+  const nomInitial = normalizeInitial(state.student.nom);
+  return Boolean(prenom && classe && nomInitial);
 }
 
 function normalizeInitial(value) {
@@ -1231,6 +1508,10 @@ function getExpected(exerciseId, level) {
   const exercise = EXERCISES.find((ex) => ex.id === exerciseId);
   const lvl = exercise?.levels.find((item) => item.n === level);
   return lvl?.expected ?? 0;
+}
+
+function roundToOne(value) {
+  return Math.round(value * 10) / 10;
 }
 
 function persistState(updateTime = true) {
@@ -1288,6 +1569,7 @@ function mergeState(partial) {
   };
   merged.skill.duration = sanitizeSkillDuration(Number(merged.skill.duration) || 10);
   merged.student.nom = normalizeInitial(merged.student.nom);
+  merged.skill.locked = Boolean(partial.skill?.locked);
   if (merged.skill.session) {
     const session = merged.skill.session;
     if (typeof session.pendingBlock === 'undefined') session.pendingBlock = null;
