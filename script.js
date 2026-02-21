@@ -157,6 +157,7 @@ let skillHistoryLocked = false;
 const ui = {};
 const trainingTimer = { running: false, remaining: TRAINING_SECONDS, interval: null };
 const skillPracticeTimer = { running: false, seconds: 0, interval: null };
+let toastTimer = null;
 
 init();
 
@@ -240,12 +241,11 @@ function cacheElements() {
   ui.importInput = document.getElementById('import-input');
   ui.resetBtn = document.getElementById('reset-btn');
   ui.scanprofHelp = document.getElementById('scanprof-help');
-  ui.faqToggle = document.getElementById('faq-toggle');
-  ui.homeFaq = document.getElementById('home-faq');
-  ui.faqQuestions = Array.from(document.querySelectorAll('.faq-question'));
+  ui.howtoBtn = document.getElementById('howto-btn');
   ui.modal = document.getElementById('modal');
   ui.modalBody = document.getElementById('modal-body');
   ui.modalClose = document.getElementById('modal-close');
+  ui.toast = document.getElementById('toast');
 }
 
 function bindIdentity() {
@@ -292,14 +292,7 @@ function bindNavigation() {
 }
 
 function setupFaqInteractions() {
-  ui.faqToggle?.addEventListener('click', () => {
-    ui.homeFaq?.classList.toggle('collapsed');
-  });
-  ui.faqQuestions?.forEach((question) => {
-    question.addEventListener('click', () => {
-      question.parentElement?.classList.toggle('open');
-    });
-  });
+  ui.howtoBtn?.addEventListener('click', openHowtoModal);
 }
 
 function updateIdentityAccess() {
@@ -514,7 +507,7 @@ function renderTrainingGrid() {
   list.forEach((exercise) => {
     const card = document.createElement('article');
     card.className = 'exercise-card';
-    if (state.training.activeId === exercise.id) card.classList.add('is-active');
+    if (state.training.activeId === exercise.id) card.classList.add('is-selected');
     const img = document.createElement('img');
     img.src = exercise.image;
     img.alt = exercise.name;
@@ -550,6 +543,7 @@ function renderTrainingGrid() {
     selectBtn.textContent = 'Sélectionner';
     selectBtn.addEventListener('click', () => {
       state.training.activeId = exercise.id;
+      updateTrainingSelection(card);
       renderTrainingActive();
       persistState(false);
     });
@@ -589,6 +583,13 @@ function renderTrainingActive() {
     ui.trainingInputN1.value = '';
     ui.trainingInputN2.value = '';
   }
+}
+
+function updateTrainingSelection(selectedCard) {
+  document.querySelectorAll('.exercise-card.is-selected').forEach((card) => {
+    if (card !== selectedCard) card.classList.remove('is-selected');
+  });
+  selectedCard?.classList.add('is-selected');
 }
 
 function startTrainingTimer() {
@@ -666,6 +667,7 @@ function saveTrainingScore() {
   persistState();
   renderTrainingHistory();
   renderTrainingGrid();
+  showToast('Score entraînement enregistré', 'ok');
 }
 
 function renderTrainingHistory() {
@@ -1073,6 +1075,7 @@ function validateSkillBlock() {
   session.pendingBlock = null;
   const totalBlocks = session.totalBlocks;
   const completedBlocks = session.blocks.length;
+  showToast(`Bloc ${completedBlocks}/${totalBlocks} enregistré`, 'ok');
   if (completedBlocks >= totalBlocks) {
     finalizeSkillSession();
   } else {
@@ -1123,6 +1126,7 @@ function finalizeSkillSession() {
   ui.skillTimerStatus.textContent = 'Séance terminée. Génère le QR ou lance une nouvelle séance.';
   updateSkillControlState();
   showSkillCompletionModal();
+  showToast('Séance Skill terminée', 'ok');
 }
 
 function resetSkillInputs(clearValues) {
@@ -1266,6 +1270,7 @@ function exportState() {
   link.click();
   document.body.removeChild(link);
   URL.revokeObjectURL(url);
+  showToast('Export enregistré', 'ok');
 }
 
 function importStateFromFile(event) {
@@ -1286,7 +1291,7 @@ function importStateFromFile(event) {
       renderSkillInputs();
       ui.skillSessionLog.innerHTML = '<p class="hint">Sélectionne la durée pour commencer.</p>';
       goToPage('training', { force: true });
-      alert('Sauvegarde importée.');
+      showToast('Sauvegarde importée', 'ok');
     } catch (error) {
       alert('Import impossible : ' + error.message);
     } finally {
@@ -1307,6 +1312,7 @@ function resetAll() {
   renderSkillInputs();
   ui.skillSessionLog.innerHTML = '<p class="hint">Sélectionne la durée pour commencer.</p>';
   goToPage(PAGE_HOME, { force: true });
+  showToast('Données réinitialisées', 'warn');
 }
 
 // ------------------ Modal ------------------
@@ -1376,6 +1382,53 @@ function openScanprofHelp() {
     </div>
   `;
   ui.modal.classList.remove('hidden');
+}
+
+function openHowtoModal() {
+  if (!ui.modalBody || !ui.modal) return;
+  ui.modalBody.innerHTML = `
+    <div class="howto-faq">
+      <h3>Mode d’emploi</h3>
+      ${renderFaqCard(
+        'Comment travailler en Entraînement ?',
+        'Choisis un exercice, lance 1 minute, note les répétitions N1/N2 puis génère le QR depuis “Fin d’entraînement”.'
+      )}
+      ${renderFaqCard(
+        'Comment travailler en Skill ?',
+        'Sélectionne 1 exercice par famille, fixe la durée (6/10/16/20 min) puis utilise les blocs de 2 minutes pour noter prévu/réalisé.'
+      )}
+      ${renderFaqCard(
+        'Sauvegarder / Importer ?',
+        'Dans “Fin d’entraînement”, exporte un fichier .json (Fichiers, AirDrop…). Pour restaurer, clique “Importer” et choisis ce fichier.'
+      )}
+      ${renderFaqCard(
+        'Que faire si ScanProf ne détecte pas le QR ?',
+        'Vérifie que la taille affichée est < 2800 caractères, place le QR bien dans le cadre, augmente la luminosité puis retente.'
+      )}
+      ${renderFaqCard(
+        'Que signifient les abréviations ?',
+        'bu = Burpees, cr = Crunch, di = Dips, fe = Fentes, jk = Jumping jack, mt = Mountain, po = Pompes, ra = Rameur, sq = Squat. Suffixes : _1/_2 = N1/N2 (training), _l = niveau, _p = prévu, _r = réalisé (skill).'
+      )}
+    </div>
+  `;
+  ui.modal.classList.remove('hidden');
+  ui.modalBody.querySelectorAll('.faq-card button').forEach((btn) => {
+    btn.addEventListener('click', () => btn.closest('.faq-card')?.classList.toggle('open'));
+  });
+}
+
+function renderFaqCard(question, answer) {
+  return `
+    <article class="faq-card">
+      <button type="button">
+        <span>${question}</span>
+        <span class="chevron">›</span>
+      </button>
+      <div class="faq-card-body">
+        <p>${answer}</p>
+      </div>
+    </article>
+  `;
 }
 
 function openLockExitConfirm() {
@@ -1512,6 +1565,18 @@ function getExpected(exerciseId, level) {
 
 function roundToOne(value) {
   return Math.round(value * 10) / 10;
+}
+
+function showToast(message, type = 'ok') {
+  if (!ui.toast || !message) return;
+  ui.toast.textContent = message;
+  ui.toast.classList.remove('toast-ok', 'toast-warn');
+  ui.toast.classList.add(type === 'warn' ? 'toast-warn' : 'toast-ok');
+  ui.toast.classList.add('visible');
+  if (toastTimer) clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => {
+    ui.toast?.classList.remove('visible');
+  }, 3600);
 }
 
 function persistState(updateTime = true) {

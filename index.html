@@ -28,38 +28,11 @@
 
       <!-- Home -->
       <section class="page active" data-page="home">
-        <div class="card hero-card">
-          <h2>Bienvenue dans l’outil Cross Training</h2>
-          <p>Prépare tes évaluations EPS hors-ligne puis exporte un QR compatible ScanProf.</p>
-          <div class="cta-row">
-            <button class="btn primary" data-go="identity">Démarrer</button>
-            <button class="btn ghost" id="faq-toggle" type="button">Mode d’emploi</button>
-          </div>
-          <div class="faq collapsed" id="home-faq">
-            <div class="faq-item">
-              <button class="faq-question" type="button">Comment travailler en Entraînement ?</button>
-              <div class="faq-answer">
-                <p>Choisis un exercice, lance 1 minute, note les répétitions N1/N2 puis génère le QR depuis l’écran “Fin d’entraînement”.</p>
-              </div>
-            </div>
-            <div class="faq-item">
-              <button class="faq-question" type="button">Comment travailler en Skill ?</button>
-              <div class="faq-answer">
-                <p>Sélectionne 1 exercice par famille, définis la durée puis passe aux observations pour gérer les blocs de 2 minutes.</p>
-              </div>
-            </div>
-            <div class="faq-item">
-              <button class="faq-question" type="button">Comment scanner dans ScanProf ?</button>
-              <div class="faq-answer">
-                <p>Depuis l’app ScanProf > Importer > Scanner, vise le QR généré (Training ou Skill). Les codes courts (bu, jk...) sont détaillés dans “ScanProf – explications”.</p>
-              </div>
-            </div>
-            <div class="faq-item">
-              <button class="faq-question" type="button">Sauvegarder / importer mes données ?</button>
-              <div class="faq-answer">
-                <p>Dans l’écran “Fin d’entraînement”, utilise les boutons Exporter / Importer. Un fichier JSON peut être stocké dans Fichiers ou partagé par AirDrop.</p>
-              </div>
-            </div>
+        <div class="card hero-card home-card">
+          <h2 class="home-title">Cross Training</h2>
+          <div class="cta-row home-actions">
+            <button class="btn primary btn-large" data-go="identity">Démarrer</button>
+            <button class="btn ghost btn-large" id="howto-btn" type="button">Mode d’emploi</button>
           </div>
         </div>
       </section>
@@ -238,6 +211,8 @@
         </div>
       </section>
     </div>
+
+    <div id="toast" class="toast" role="status" aria-live="polite"></div>
 
     <div id="modal" class="modal hidden" role="dialog" aria-modal="true">
       <div class="modal-card">
