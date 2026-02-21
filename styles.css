@@ -1116,3 +1116,26 @@ select:focus {
     margin: 0;
   }
 }
+
+/* Skill page: layout naturel (pas de scroll interne) */
+.page[data-page='skill_run'] {
+  min-height: auto;
+  overflow: visible;
+}
+
+.page.active[data-page='skill_run'] {
+  display: block !important;
+}
+
+.page[data-page='skill_run'] .card.skill-run-card {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  height: auto;
+}
+
+.page[data-page='skill_run'] #skill-results-grid,
+.page[data-page='skill_run'] #skill-session-log {
+  max-height: none;
+  overflow: visible;
+}
