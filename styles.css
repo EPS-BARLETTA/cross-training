@@ -707,6 +707,59 @@ select:focus {
   }
 }
 
+/* --- Skill run fix ------------------------------------------------------ */
+.page[data-page='skill_run'] .card.skill-run-card {
+  display: grid;
+  grid-template-areas:
+    'timer'
+    'controls'
+    'results'
+    'reset'
+    'status'
+    'save'
+    'block'
+    'log';
+  grid-template-rows: auto auto 1fr auto auto auto auto auto;
+  min-height: 0;
+  gap: 1.1rem;
+}
+
+.page[data-page='skill_run'] .card.skill-run-card #skill-reset-session {
+  grid-area: reset;
+  justify-self: stretch;
+}
+
+.page[data-page='skill_run'] #skill-timer-status {
+  grid-area: status;
+  margin: 0;
+  text-align: center;
+}
+
+.page[data-page='skill_run'] #skill-save-status {
+  grid-area: save;
+  margin: 0;
+  text-align: center;
+}
+
+.page[data-page='skill_run'] .block-actions {
+  grid-area: block;
+  justify-content: center;
+}
+
+.page[data-page='skill_run'] #skill-session-log {
+  grid-area: log;
+  min-height: 0;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.page[data-page='skill_run'] #skill-results-grid {
+  grid-area: results;
+  min-height: 0;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
 #skill-reset-session {
   align-self: flex-start;
 }
