@@ -1040,3 +1040,62 @@ select:focus {
     grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
   }
 }
+
+/* ===========================
+   FIX iPad Skill (skill_run)
+   CSS uniquement — à coller EN FIN de styles.css
+   =========================== */
+
+/* Permet aux lignes flex/grid de shrink correctement */
+.page[data-page='skill_run'] .card.skill-run-card {
+  min-height: 0;
+}
+
+/* Grille explicite : empêche l’auto-placement des éléments intermédiaires */
+.page[data-page='skill_run'] .skill-run-card {
+  grid-template-areas:
+    "timer"
+    "controls"
+    "results"
+    "reset"
+    "status"
+    "save"
+    "block"
+    "log";
+  grid-template-rows: auto auto 1fr auto auto auto auto auto;
+}
+
+/* Placement des zones */
+.page[data-page='skill_run'] .skill-run-card .practice-box.run { grid-area: timer; }
+.page[data-page='skill_run'] .skill-run-card .run-controls { grid-area: controls; }
+
+.page[data-page='skill_run'] .skill-run-card #skill-results-grid { grid-area: results; }
+.page[data-page='skill_run'] .skill-run-card #skill-reset-session { grid-area: reset; }
+.page[data-page='skill_run'] .skill-run-card #skill-timer-status { grid-area: status; }
+.page[data-page='skill_run'] .skill-run-card #skill-save-status { grid-area: save; }
+.page[data-page='skill_run'] .skill-run-card .block-actions { grid-area: block; }
+.page[data-page='skill_run'] .skill-run-card #skill-session-log { grid-area: log; }
+
+/* Zone exercices : scroll interne iOS */
+.page[data-page='skill_run'] .skill-run-card #skill-results-grid {
+  min-height: 0;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Log : scroll interne */
+.page[data-page='skill_run'] .skill-run-card #skill-session-log {
+  min-height: 0;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* iPad/petit viewport : chrono un peu plus compact */
+@media (max-height: 820px) {
+  .page[data-page='skill_run'] .skill-run-card .practice-box.run {
+    padding: 1rem;
+  }
+  .page[data-page='skill_run'] .skill-run-card .timer-display {
+    font-size: clamp(2.5rem, 6vw, 4.5rem);
+  }
+}
