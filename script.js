@@ -9,6 +9,10 @@ const PLACEHOLDER_IMG =
   "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='320' height='200'><rect width='320' height='200' rx='24' fill='%23e2e8f0'/><text x='50%' y='50%' font-family='Inter,Arial' font-size='18' fill='%2394a3b8' text-anchor='middle' dominant-baseline='middle'>Visuel manquant</text></svg>";
 const PAGE_HOME = 'home';
 const SKILL_LOCK_PAGES = new Set(['skill_run', 'skill_qr']);
+const SKILL_QR_CONFIRM_MESSAGE =
+  'As-tu fait scanner ton QR code par ton professeur ?\nSi tu quittes maintenant, tu risques de perdre tes données.\n\nQuitter quand même ?';
+const SKILL_RESET_BLOCK_CONFIRM_MESSAGE =
+  'Ce bloc sera entièrement réinitialisé.\nLes répétitions saisies seront perdues.\nSi une récupération est en cours, elle sera annulée.\n\nVoulez-vous vraiment recommencer ce bloc ?';
 const MINUTES_TOLERANCE = 0.2;
 const PREFERS_REDUCED_MOTION = typeof window !== 'undefined' && window.matchMedia ? window.matchMedia('(prefers-reduced-motion: reduce)') : null;
 
@@ -212,6 +216,8 @@ const defaultState = () => ({
 let state = loadState();
 let currentPage = PAGE_HOME;
 let skillHistoryLocked = false;
+let skillQrGuardActive = false;
+let skillQrHistoryLocked = false;
 const ui = {};
 const trainingTimer = { running: false, remaining: TRAINING_SECONDS, interval: null };
 const skillPracticeTimer = { running: false, seconds: 0, interval: null };
@@ -219,6 +225,9 @@ const skillRecoveryTimer = { running: false, remaining: 0, interval: null };
 let toastTimer = null;
 
 init();
+if (typeof window !== 'undefined') {
+  window.addEventListener('popstate', handleSkillQrGuardPop);
+}
 
 function init() {
   cacheElements();
@@ -384,6 +393,13 @@ function updateSkillConfigState() {
 
 function goToPage(name, options = {}) {
   if (!name) return;
+  if (skillQrGuardActive && currentPage === 'skill_qr' && name !== 'skill_qr') {
+    if (!confirmSkillQrExit()) {
+      ensureSkillQrGuardState();
+      return;
+    }
+    disableSkillQrGuard();
+  }
   const leavingLocked =
     state.skill.locked && SKILL_LOCK_PAGES.has(currentPage) && !SKILL_LOCK_PAGES.has(name) && !options.force;
   if (leavingLocked) {
@@ -409,9 +425,54 @@ function goToPage(name, options = {}) {
     ensureSkillSession();
     lockSkillMode();
   }
+  if (name === 'skill_qr') {
+    enableSkillQrGuard();
+  } else if (skillQrGuardActive) {
+    disableSkillQrGuard();
+  }
   updateNavigationState();
   updateIdentityAccess();
   updateLockBadge();
+}
+
+function confirmSkillQrExit() {
+  return confirm(SKILL_QR_CONFIRM_MESSAGE);
+}
+
+function enableSkillQrGuard() {
+  if (!skillQrGuardActive) {
+    skillQrGuardActive = true;
+    skillQrHistoryLocked = false;
+  }
+  ensureSkillQrGuardState();
+}
+
+function disableSkillQrGuard() {
+  skillQrGuardActive = false;
+  skillQrHistoryLocked = false;
+}
+
+function ensureSkillQrGuardState() {
+  if (!skillQrGuardActive || skillQrHistoryLocked) return;
+  try {
+    history.pushState({ skillQrGuard: true }, document.title, window.location.href);
+    skillQrHistoryLocked = true;
+  } catch (error) {
+    console.warn('Impossible de sécuriser la page QR', error);
+  }
+}
+
+function handleSkillQrGuardPop() {
+  if (!skillQrGuardActive || currentPage !== 'skill_qr') {
+    skillQrHistoryLocked = false;
+    return;
+  }
+  skillQrHistoryLocked = false;
+  if (!confirmSkillQrExit()) {
+    ensureSkillQrGuardState();
+    return;
+  }
+  disableSkillQrGuard();
 }
 
 function lockSkillMode(fromLoad = false) {
@@ -487,7 +548,10 @@ function bindActions() {
   ui.skillEndBlock?.addEventListener('click', () => completeSkillPractice(false));
   ui.skillDuration?.addEventListener('change', handleSkillDurationChange);
   ui.skillValidate?.addEventListener('click', validateSkillBlock);
-  ui.skillResetBlock?.addEventListener('click', () => resetSkillInputs(true));
+  ui.skillResetBlock?.addEventListener('click', () => {
+    if (!confirm(SKILL_RESET_BLOCK_CONFIRM_MESSAGE)) return;
+    resetSkillInputs(true);
+  });
   ui.skillQrBtn?.addEventListener('click', handleSkillQr);
   ui.skillConfigNext?.addEventListener('click', () => {
     if (!isIdentityComplete()) {
