@@ -1131,6 +1131,10 @@ select:focus {
   padding: 0.15rem 0;
 }
 
+.page[data-page='skill_run'] #skill-validate-block {
+  display: none;
+}
+
 /* Skill page: layout naturel (pas de scroll interne) */
 .page[data-page='skill_run'] {
   min-height: auto;

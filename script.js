@@ -1148,6 +1148,10 @@ function validateSkillBlock() {
   ensureSkillSession();
   const session = state.skill.session;
   if (!session) return;
+  if (skillRecoveryTimer.running || skillRecoveryTimer.remaining > 0) {
+    setSkillSaveStatus('Attends la fin de la récupération automatique.');
+    return;
+  }
   stopSkillRecovery();
   if (!session.pendingBlock) {
     setSkillSaveStatus('Termine le bloc (chrono) avant de valider.');
