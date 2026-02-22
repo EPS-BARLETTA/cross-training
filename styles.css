@@ -1139,3 +1139,12 @@ select:focus {
   max-height: none;
   overflow: visible;
 }
+
+/* ScanProf modal lisible */
+.scanprof-help,
+.scanprof-help h3,
+.scanprof-help h4,
+.scanprof-help p,
+.scanprof-help li {
+  color: #111;
+}
