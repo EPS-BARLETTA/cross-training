@@ -1148,3 +1148,72 @@ select:focus {
 .scanprof-help li {
   color: #111;
 }
+
+/* Boutons adoucis */
+.btn {
+  border-radius: 24px;
+  padding: 0.85rem 1.4rem;
+  font-weight: 600;
+  font-size: 0.98rem;
+  min-height: 52px;
+  transition: transform 100ms ease, background-color 120ms ease, color 120ms ease, box-shadow 120ms ease;
+  box-shadow: none;
+}
+
+.btn:focus-visible {
+  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.15);
+}
+
+.btn.primary {
+  background: linear-gradient(135deg, #6b62ff, #7f79ff);
+  box-shadow: none;
+}
+
+.btn.secondary {
+  background: #272b35;
+  box-shadow: none;
+}
+
+.btn.ghost {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.btn.btn-green {
+  background: linear-gradient(135deg, #38c46d, #2a9f55);
+  box-shadow: none;
+}
+
+.btn.btn-orange {
+  background: linear-gradient(135deg, #f3a04c, #d97b1f);
+  box-shadow: none;
+}
+
+.btn.btn-blue {
+  background: linear-gradient(135deg, #52b3f5, #338bd4);
+  box-shadow: none;
+}
+
+.btn.btn-red {
+  background: linear-gradient(135deg, #ff6b70, #d94b5c);
+  box-shadow: none;
+}
+
+.btn:not(:disabled):hover {
+  filter: brightness(1.05);
+}
+
+.btn:not(:disabled):active {
+  transform: translateY(1px);
+}
+
+.pill-filter {
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  background: rgba(255, 255, 255, 0.04);
+  transition: background-color 120ms ease, color 120ms ease, border-color 120ms ease;
+}
+
+.pill-filter.active {
+  background: rgba(127, 93, 255, 0.18);
+  border-color: rgba(127, 93, 255, 0.45);
+}
