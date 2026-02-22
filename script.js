@@ -111,6 +111,16 @@ const EXERCISES = [
     ],
   },
   {
+    id: 'pont-fessier',
+    name: 'Pont fessier',
+    family: 'bas',
+    image: 'assets/pont-fessier.jpg',
+    levels: [
+      { n: 1, label: 'Classique', expected: 18 },
+      { n: 2, label: 'Pause 1 sec', expected: 24 },
+    ],
+  },
+  {
     id: 'rameur',
     name: 'Rameur au sol',
     family: 'gainage',
@@ -130,6 +140,16 @@ const EXERCISES = [
       { n: 2, label: 'Sit up & twist', expected: 22 },
     ],
   },
+  {
+    id: 'planche-touches-epaule',
+    name: 'Planche touches épaules',
+    family: 'gainage',
+    image: 'assets/planche-touches-epaule.jpg',
+    levels: [
+      { n: 1, label: 'Sur genoux', expected: 20 },
+      { n: 2, label: 'Classique', expected: 30 },
+    ],
+  },
 ];
 
 const EXO_CODES = {
@@ -142,11 +162,27 @@ const EXO_CODES = {
   saut: 'sa',
   pompes: 'po',
   'pompe-diamant': 'pdi',
+  'pont-fessier': 'pf',
   rameur: 'ra',
   squat: 'sq',
+  'planche-touches-epaule': 'pt',
 };
 
-const EXO_ORDER = ['burpees', 'crunch', 'dips', 'fentes', 'jumping-jack', 'mountain', 'saut', 'pompes', 'pompe-diamant', 'rameur', 'squat'];
+const EXO_ORDER = [
+  'burpees',
+  'crunch',
+  'dips',
+  'fentes',
+  'jumping-jack',
+  'mountain',
+  'saut',
+  'pompes',
+  'pompe-diamant',
+  'rameur',
+  'squat',
+  'pont-fessier',
+  'planche-touches-epaule',
+];
 
 const defaultState = () => ({
   v: STORAGE_VERSION,
@@ -1366,23 +1402,25 @@ function closeModal() {
 
 function openScanprofHelp() {
   if (!ui.modalBody || !ui.modal) return;
+  const exerciseLabels = EXERCISES.reduce((map, exercise) => {
+    map[exercise.id] = exercise.name;
+    return map;
+  }, {});
+  const codesList = Object.entries(EXO_CODES)
+    .map(([id, code]) => ({
+      code,
+      label: exerciseLabels[id] || id,
+    }))
+    .sort((a, b) => a.code.localeCompare(b.code))
+    .map((item) => `<li>${item.code} = ${item.label}</li>`)
+    .join('');
   ui.modalBody.innerHTML = `
     <div class="scanprof-help">
       <h3>ScanProf – légende</h3>
       <div style="background:#f1f5f9;border-radius:18px;padding:1rem;margin-bottom:0.75rem;">
         <h4>Exercices (codes)</h4>
         <ul>
-          <li>bu = Burpees</li>
-          <li>cr = Crunch</li>
-          <li>di = Dips</li>
-          <li>fe = Fentes</li>
-          <li>jk = Jumping jack</li>
-          <li>mt = Mountain climbers</li>
-          <li>sa = Saut</li>
-          <li>po = Pompes</li>
-          <li>pdi = Pompe diamant</li>
-          <li>ra = Rameur</li>
-          <li>sq = Squat</li>
+          ${codesList}
         </ul>
       </div>
       <div style="background:#ecfeff;border-radius:18px;padding:1rem;margin-bottom:0.75rem;">
