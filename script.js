@@ -51,6 +51,16 @@ const EXERCISES = [
     ],
   },
   {
+    id: 'saut',
+    name: 'Saut',
+    family: 'cardio',
+    image: 'assets/saut.jpg',
+    levels: [
+      { n: 1, label: 'Décomposé', expected: 20 },
+      { n: 2, label: 'Continu', expected: 30 },
+    ],
+  },
+  {
     id: 'pompes',
     name: 'Pompes',
     family: 'haut',
@@ -119,12 +129,13 @@ const EXO_CODES = {
   fentes: 'fe',
   'jumping-jack': 'jk',
   mountain: 'mt',
+  saut: 'sa',
   pompes: 'po',
   rameur: 'ra',
   squat: 'sq',
 };
 
-const EXO_ORDER = ['burpees', 'crunch', 'dips', 'fentes', 'jumping-jack', 'mountain', 'pompes', 'rameur', 'squat'];
+const EXO_ORDER = ['burpees', 'crunch', 'dips', 'fentes', 'jumping-jack', 'mountain', 'saut', 'pompes', 'rameur', 'squat'];
 
 const defaultState = () => ({
   v: STORAGE_VERSION,
@@ -1356,6 +1367,7 @@ function openScanprofHelp() {
           <li>fe = Fentes</li>
           <li>jk = Jumping jack</li>
           <li>mt = Mountain climbers</li>
+          <li>sa = Saut</li>
           <li>po = Pompes</li>
           <li>ra = Rameur</li>
           <li>sq = Squat</li>
@@ -1405,7 +1417,7 @@ function openHowtoModal() {
       )}
       ${renderFaqCard(
         'Que signifient les abréviations ?',
-        'bu = Burpees, cr = Crunch, di = Dips, fe = Fentes, jk = Jumping jack, mt = Mountain, po = Pompes, ra = Rameur, sq = Squat. Suffixes : _1/_2 = N1/N2 (training), _l = niveau, _p = prévu, _r = réalisé (skill).'
+        'bu = Burpees, cr = Crunch, di = Dips, fe = Fentes, jk = Jumping jack, mt = Mountain, sa = Saut, po = Pompes, ra = Rameur, sq = Squat. Suffixes : _1/_2 = N1/N2 (training), _l = niveau, _p = prévu, _r = réalisé (skill).'
       )}
     </div>
   `;
