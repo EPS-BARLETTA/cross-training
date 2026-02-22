@@ -81,6 +81,16 @@ const EXERCISES = [
     ],
   },
   {
+    id: 'pompe-diamant',
+    name: 'Pompe diamant',
+    family: 'haut',
+    image: 'assets/pompe-diamant.jpg',
+    levels: [
+      { n: 1, label: 'Sur genoux', expected: 10 },
+      { n: 2, label: 'Classique', expected: 14 },
+    ],
+  },
+  {
     id: 'squat',
     name: 'Squat',
     family: 'bas',
@@ -131,11 +141,12 @@ const EXO_CODES = {
   mountain: 'mt',
   saut: 'sa',
   pompes: 'po',
+  'pompe-diamant': 'pdi',
   rameur: 'ra',
   squat: 'sq',
 };
 
-const EXO_ORDER = ['burpees', 'crunch', 'dips', 'fentes', 'jumping-jack', 'mountain', 'saut', 'pompes', 'rameur', 'squat'];
+const EXO_ORDER = ['burpees', 'crunch', 'dips', 'fentes', 'jumping-jack', 'mountain', 'saut', 'pompes', 'pompe-diamant', 'rameur', 'squat'];
 
 const defaultState = () => ({
   v: STORAGE_VERSION,
@@ -1369,6 +1380,7 @@ function openScanprofHelp() {
           <li>mt = Mountain climbers</li>
           <li>sa = Saut</li>
           <li>po = Pompes</li>
+          <li>pdi = Pompe diamant</li>
           <li>ra = Rameur</li>
           <li>sq = Squat</li>
         </ul>
