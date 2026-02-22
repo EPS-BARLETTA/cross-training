@@ -1194,26 +1194,153 @@ select:focus {
   box-shadow: none;
 }
 
-.btn.btn-red {
-  background: linear-gradient(135deg, #ff6b70, #d94b5c);
-  box-shadow: none;
+/* ===============================
+   EPS institutional button palette
+   =============================== */
+.btn {
+  border-radius: 24px;
+  padding: 0.85rem 1.4rem;
+  font-weight: 600;
+  font-size: 1rem;
+  min-height: 52px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: #262f3c;
+  color: #f6f8fb;
+  box-shadow: 0 6px 14px rgba(0, 0, 0, 0.28);
+  transition: background-color 150ms ease, border-color 150ms ease, color 150ms ease, transform 120ms ease, box-shadow 120ms ease;
+}
+
+.btn:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(62, 98, 128, 0.45);
 }
 
 .btn:not(:disabled):hover {
-  filter: brightness(1.05);
+  background: #2c3745;
+  border-color: rgba(255, 255, 255, 0.2);
 }
 
 .btn:not(:disabled):active {
   transform: translateY(1px);
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.25);
+}
+
+.btn.primary {
+  background: #2f4f6f;
+  border-color: #3c5f80;
+  color: #ffffff;
+  box-shadow: 0 10px 22px rgba(0, 0, 0, 0.35);
+}
+
+.btn.primary:hover:not(:disabled) {
+  background: #355a7d;
+}
+
+.btn.secondary {
+  background: #566273;
+  border-color: #646f80;
+  color: #f6f8fb;
+}
+
+.btn.secondary:hover:not(:disabled) {
+  background: #606d7f;
+}
+
+.btn.ghost {
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  color: #f5f7fa;
+  box-shadow: none;
+}
+
+.btn.ghost:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.btn.btn-red {
+  background: #a94442;
+  border-color: #b75653;
+  color: #fff;
+}
+
+.btn.btn-red:hover:not(:disabled) {
+  background: #953c39;
+}
+
+.btn.btn-green {
+  background: #3f6b4e;
+  border-color: #4d7d5c;
+  color: #fff;
+}
+
+.btn.btn-orange {
+  background: #b2723a;
+  border-color: #c38148;
+  color: #fff;
+}
+
+.btn.btn-blue {
+  background: #3a6b84;
+  border-color: #4a7e98;
+  color: #fff;
+}
+
+.btn.btn-green:hover:not(:disabled) {
+  background: #467658;
+}
+
+.btn.btn-orange:hover:not(:disabled) {
+  background: #bb7d45;
+}
+
+.btn.btn-blue:hover:not(:disabled) {
+  background: #427792;
 }
 
 .pill-filter {
-  border: 1px solid rgba(255, 255, 255, 0.15);
-  background: rgba(255, 255, 255, 0.04);
-  transition: background-color 120ms ease, color 120ms ease, border-color 120ms ease;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  background: rgba(255, 255, 255, 0.03);
+  color: #f5f7fa;
+  transition: background-color 150ms ease, border-color 150ms ease;
 }
 
 .pill-filter.active {
-  background: rgba(127, 93, 255, 0.18);
-  border-color: rgba(127, 93, 255, 0.45);
+  background: rgba(47, 79, 111, 0.35);
+  border-color: rgba(47, 79, 111, 0.65);
+}
+
+.pill-filter:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(62, 98, 128, 0.45);
+}
+
+/* Mode-specific entry/navigation accents */
+.nav-link[data-go='home'],
+.btn[data-go='home'] {
+  background: #3d5f4b;
+  border-color: rgba(124, 166, 138, 0.5);
+  color: #f5f9f4;
+}
+
+.nav-link[data-go='identity'],
+.btn[data-go='identity'] {
+  background: #3d5b7a;
+  border-color: rgba(107, 149, 187, 0.55);
+  color: #f4f8fc;
+}
+
+.nav-link[data-go='training'],
+.btn[data-go='training'],
+#go-training {
+  background: #2c4c63;
+  border-color: rgba(92, 137, 164, 0.55);
+  color: #f4f8fc;
+}
+
+.nav-link[data-go='skill_config'],
+.btn[data-go='skill_config'],
+#go-skill {
+  background: #275e58;
+  border-color: rgba(93, 159, 148, 0.6);
+  color: #f4fdfb;
 }
