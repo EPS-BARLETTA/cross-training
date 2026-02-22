@@ -1117,6 +1117,20 @@ select:focus {
   }
 }
 
+.page[data-page='skill_run'] .practice-box.run {
+  padding: 0.85rem 1rem;
+}
+
+.page[data-page='skill_run'] .practice-box.run .label {
+  display: none;
+}
+
+.page[data-page='skill_run'] #skill-practice-timer {
+  font-size: clamp(1.5rem, 4vw, 2.3rem);
+  line-height: 1.1;
+  padding: 0.15rem 0;
+}
+
 /* Skill page: layout naturel (pas de scroll interne) */
 .page[data-page='skill_run'] {
   min-height: auto;
