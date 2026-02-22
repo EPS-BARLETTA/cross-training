@@ -10,9 +10,9 @@ const PLACEHOLDER_IMG =
 const PAGE_HOME = 'home';
 const SKILL_LOCK_PAGES = new Set(['skill_run', 'skill_qr']);
 const SKILL_QR_CONFIRM_MESSAGE =
-  'As-tu fait scanner ton QR code par ton professeur ?\nSi tu quittes maintenant, tu risques de perdre tes données.\n\nQuitter quand même ?';
+  '⚠️ Attention : avez-vous fait scanner votre QR code par votre professeur ?\n\nSi vous quittez cette page, les données de la séance pourront être perdues.\n\nConfirmez-vous que vous souhaitez quitter ?';
 const SKILL_RESET_BLOCK_CONFIRM_MESSAGE =
-  'Ce bloc sera entièrement réinitialisé.\nLes répétitions saisies seront perdues.\nSi une récupération est en cours, elle sera annulée.\n\nVoulez-vous vraiment recommencer ce bloc ?';
+  '⚠️ Attention : toutes les données de ce bloc seront définitivement supprimées.\n\nConfirmez-vous la réinitialisation du bloc ?';
 const MINUTES_TOLERANCE = 0.2;
 const PREFERS_REDUCED_MOTION = typeof window !== 'undefined' && window.matchMedia ? window.matchMedia('(prefers-reduced-motion: reduce)') : null;
 
