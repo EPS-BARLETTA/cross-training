@@ -1185,6 +1185,7 @@ function completeSkillPractice(autoComplete) {
 
 function updateSkillPracticeDisplay() {
   if (!ui.skillPracticeTimer) return;
+  clearSkillSaveStatusDuringActiveTimers();
   const session = state.skill.session;
   if (skillSasTimer.running) {
     const cappedSeconds = skillPracticeTimer.seconds || BLOCK_DURATION_SECONDS;
@@ -1868,6 +1869,11 @@ function setSkillSaveStatus(value) {
   if (ui.skillSaveStatus) {
     ui.skillSaveStatus.textContent = value || '';
   }
+}
+
+function clearSkillSaveStatusDuringActiveTimers() {
+  const active = skillPracticeTimer.running || skillRecoveryTimer.running || skillSasTimer.running;
+  if (active) setSkillSaveStatus('');
 }
 
 // ------------------ Helpers ------------------
