@@ -4,6 +4,7 @@ const STORAGE_KEY = 'CT_APP_STATE_V3';
 const STORAGE_VERSION = 3;
 const TRAINING_SECONDS = 60;
 const BLOCK_DURATION_SECONDS = 120;
+const END_SAS_SECONDS = 10;
 const ALLOWED_SKILL_DURATIONS = [6, 10, 16, 20];
 const PLACEHOLDER_IMG =
   "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='320' height='200'><rect width='320' height='200' rx='24' fill='%23e2e8f0'/><text x='50%' y='50%' font-family='Inter,Arial' font-size='18' fill='%2394a3b8' text-anchor='middle' dominant-baseline='middle'>Visuel manquant</text></svg>";
@@ -222,7 +223,9 @@ const ui = {};
 const trainingTimer = { running: false, remaining: TRAINING_SECONDS, interval: null };
 const skillPracticeTimer = { running: false, seconds: 0, interval: null };
 const skillRecoveryTimer = { running: false, remaining: 0, interval: null };
+const skillSasTimer = { running: false, remaining: 0, interval: null };
 let toastTimer = null;
+let skillStartDefaultLabel = '';
 
 init();
 if (typeof window !== 'undefined') {
@@ -289,6 +292,10 @@ function cacheElements() {
   ui.skillBlockCounter = document.getElementById('skill-block-counter');
   ui.skillTimerStatus = document.getElementById('skill-timer-status');
   ui.skillStart = document.getElementById('skill-start');
+  if (!skillStartDefaultLabel && ui.skillStart?.textContent) {
+    skillStartDefaultLabel = ui.skillStart.textContent.trim();
+  }
+  if (!skillStartDefaultLabel) skillStartDefaultLabel = 'Démarrer bloc';
   ui.skillPause = document.getElementById('skill-pause');
   ui.skillEndBlock = document.getElementById('skill-end-block');
   ui.skillResultsGrid = document.getElementById('skill-results-grid');
@@ -403,9 +410,7 @@ function goToPage(name, options = {}) {
   const leavingLocked =
     state.skill.locked && SKILL_LOCK_PAGES.has(currentPage) && !SKILL_LOCK_PAGES.has(name) && !options.force;
   if (leavingLocked) {
-    if (ui.skillTimerStatus) {
-      ui.skillTimerStatus.textContent = 'Séance verrouillée : utilise le badge pour quitter.';
-    }
+    if (ui.skillTimerStatus) ui.skillTimerStatus.textContent = 'Séance verrouillée : utilise le badge pour quitter.';
     alert('Séance Skill verrouillée : utilise le badge pour quitter ou termine la séance.');
     return;
   }
@@ -544,7 +549,7 @@ function bindActions() {
   ui.trainingSave.addEventListener('click', saveTrainingScore);
   ui.trainingQrBtn.addEventListener('click', handleTrainingQr);
 
-  ui.skillStart?.addEventListener('click', startSkillPractice);
+  ui.skillStart?.addEventListener('click', handleSkillStartClick);
   ui.skillEndBlock?.addEventListener('click', () => completeSkillPractice(false));
   ui.skillDuration?.addEventListener('change', handleSkillDurationChange);
   ui.skillValidate?.addEventListener('click', validateSkillBlock);
@@ -953,20 +958,82 @@ function handleSkillDurationChange() {
   persistState(false);
 }
 
+function handleSkillStartClick() {
+  if (skillSasTimer.running) {
+    if (state.skill.session?.pendingBlock) {
+      validateSkillBlock();
+    }
+    return;
+  }
+  startSkillPractice();
+}
+
+function applySkillPhaseClasses(options = {}) {
+  const { recovery = false, warning = false } = options;
+  [ui.skillPracticeTimer, ui.skillTimerStatus].forEach((el) => {
+    if (!el) return;
+    el.classList.toggle('is-recovery', recovery);
+    el.classList.toggle('is-warning', warning);
+  });
+}
+
+function setSkillContinueButton(active) {
+  if (!ui.skillStart) return;
+  if (active) {
+    ui.skillStart.textContent = 'Continuer';
+    return;
+  }
+  if (skillStartDefaultLabel) {
+    ui.skillStart.textContent = skillStartDefaultLabel;
+  }
+}
+
+function stopSkillSasCountdown() {
+  if (skillSasTimer.interval) {
+    clearInterval(skillSasTimer.interval);
+    skillSasTimer.interval = null;
+  }
+  const wasRunning = skillSasTimer.running;
+  skillSasTimer.running = false;
+  skillSasTimer.remaining = 0;
+  setSkillContinueButton(false);
+  if (wasRunning) updateSkillPracticeDisplay();
+  updateSkillControlState();
+}
+
+function startSkillSasCountdown() {
+  stopSkillSasCountdown();
+  skillSasTimer.remaining = END_SAS_SECONDS;
+  skillSasTimer.running = true;
+  setSkillContinueButton(true);
+  updateSkillPracticeDisplay();
+  skillSasTimer.interval = setInterval(() => {
+    skillSasTimer.remaining = Math.max(0, skillSasTimer.remaining - 1);
+    updateSkillPracticeDisplay();
+    if (skillSasTimer.remaining <= 0) {
+      stopSkillSasCountdown();
+      if (state.skill.session?.pendingBlock) {
+        validateSkillBlock();
+      }
+    }
+  }, 1000);
+  updateSkillControlState();
+}
+
 function startSkillPractice() {
   if (!isSkillReady()) {
-    ui.skillTimerStatus.textContent = 'Sélectionne les 4 exercices et la durée.';
+    if (ui.skillTimerStatus) ui.skillTimerStatus.textContent = 'Sélectionne les 4 exercices et la durée.';
     return;
   }
   ensureSkillSession();
   const session = state.skill.session;
   if (!session) return;
   if (session.currentBlock > session.totalBlocks) {
-    ui.skillTimerStatus.textContent = 'Séance terminée. Lance une nouvelle séance.';
+    if (ui.skillTimerStatus) ui.skillTimerStatus.textContent = 'Séance terminée. Lance une nouvelle séance.';
     return;
   }
   if (session.pendingBlock) {
-    ui.skillTimerStatus.textContent = 'Valide ou réinitialise le bloc avant de relancer.';
+    if (ui.skillTimerStatus) ui.skillTimerStatus.textContent = 'Valide ou réinitialise le bloc avant de relancer.';
     return;
   }
   if (!session.expectedLocked) {
@@ -974,10 +1041,11 @@ function startSkillPractice() {
     persistState(false);
     renderSkillInputs();
   }
+  stopSkillSasCountdown();
   if (skillPracticeTimer.running) return;
   skillPracticeTimer.running = true;
   if (skillPracticeTimer.seconds === 0) {
-    ui.skillTimerStatus.textContent = `Bloc ${session.currentBlock}/${session.totalBlocks} en cours…`;
+    if (ui.skillTimerStatus) ui.skillTimerStatus.textContent = `Bloc ${session.currentBlock}/${session.totalBlocks} en cours…`;
   }
   updateSkillPracticeDisplay();
   skillPracticeTimer.interval = setInterval(() => {
@@ -997,7 +1065,7 @@ function pauseSkillPractice(showPause) {
     skillPracticeTimer.interval = null;
   }
   if (skillPracticeTimer.running && showPause) {
-    ui.skillTimerStatus.textContent = 'Chrono en pause.';
+    if (ui.skillTimerStatus) ui.skillTimerStatus.textContent = 'Chrono en pause.';
   }
   skillPracticeTimer.running = false;
   updateSkillControlState();
@@ -1005,14 +1073,17 @@ function pauseSkillPractice(showPause) {
 
 function resetSkillPractice(keepStatus) {
   stopSkillRecovery();
+  stopSkillSasCountdown();
   if (state.skill.session?.pendingBlock) {
-    ui.skillTimerStatus.textContent = 'Valide ou réinitialise le bloc pour relancer le chrono.';
+    if (ui.skillTimerStatus) ui.skillTimerStatus.textContent = 'Valide ou réinitialise le bloc pour relancer le chrono.';
     return;
   }
   pauseSkillPractice(false);
   skillPracticeTimer.seconds = 0;
   updateSkillPracticeDisplay();
-  if (!keepStatus) ui.skillTimerStatus.textContent = '';
+  if (!keepStatus && ui.skillTimerStatus) {
+    ui.skillTimerStatus.textContent = '';
+  }
   updateSkillControlState();
 }
 
@@ -1020,19 +1091,20 @@ function completeSkillPractice(autoComplete) {
   const session = state.skill.session;
   if (!session) return;
   if (session.pendingBlock) {
-    ui.skillTimerStatus.textContent = 'Bloc déjà terminé, valide les données.';
+    if (ui.skillTimerStatus) ui.skillTimerStatus.textContent = 'Bloc déjà terminé, valide les données.';
     return;
   }
   stopSkillRecovery();
+  stopSkillSasCountdown();
   if (!skillPracticeTimer.running && skillPracticeTimer.seconds === 0) {
-    ui.skillTimerStatus.textContent = 'Lance le chrono avant de terminer le bloc.';
+    if (ui.skillTimerStatus) ui.skillTimerStatus.textContent = 'Lance le chrono avant de terminer le bloc.';
     return;
   }
   const recordedSeconds = autoComplete ? BLOCK_DURATION_SECONDS : skillPracticeTimer.seconds;
   pauseSkillPractice(false);
   const practiceSeconds = Math.min(recordedSeconds, BLOCK_DURATION_SECONDS);
   if (practiceSeconds <= 0) {
-    ui.skillTimerStatus.textContent = 'Le chrono doit tourner avant de terminer.';
+    if (ui.skillTimerStatus) ui.skillTimerStatus.textContent = 'Le chrono doit tourner avant de terminer.';
     return;
   }
   const recoverSeconds = Math.max(0, BLOCK_DURATION_SECONDS - practiceSeconds);
@@ -1045,17 +1117,44 @@ function completeSkillPractice(autoComplete) {
   if (recoverSeconds > 0) {
     startSkillRecovery(recoverSeconds);
   } else {
-    ui.skillTimerStatus.textContent = 'Bloc terminé : renseigne les observables puis valide.';
+    if (autoComplete) {
+      startSkillSasCountdown();
+    } else {
+      if (ui.skillTimerStatus) ui.skillTimerStatus.textContent = 'Bloc terminé : renseigne les observables puis valide.';
+      applySkillPhaseClasses();
+    }
   }
 }
 
 function updateSkillPracticeDisplay() {
   if (!ui.skillPracticeTimer) return;
+  const session = state.skill.session;
+  if (skillSasTimer.running) {
+    const cappedSeconds = skillPracticeTimer.seconds || BLOCK_DURATION_SECONDS;
+    ui.skillPracticeTimer.textContent = formatTime(cappedSeconds);
+    const countdown = String(Math.max(0, skillSasTimer.remaining)).padStart(2, '0');
+    if (ui.skillTimerStatus) ui.skillTimerStatus.textContent = `TEMPS ECOULE — SAISIE (auto dans ${countdown}s)`;
+    applySkillPhaseClasses({ recovery: false, warning: skillSasTimer.remaining <= 5 });
+    return;
+  }
   if (skillRecoveryTimer.running || skillRecoveryTimer.remaining > 0) {
     ui.skillPracticeTimer.textContent = formatTime(skillRecoveryTimer.remaining);
+    if (ui.skillTimerStatus) ui.skillTimerStatus.textContent = `RECUPERATION — ${formatTime(skillRecoveryTimer.remaining)}`;
+    applySkillPhaseClasses({ recovery: true, warning: skillRecoveryTimer.remaining <= 5 });
     return;
   }
   ui.skillPracticeTimer.textContent = formatTime(skillPracticeTimer.seconds);
+  const inPractice = Boolean(session && !session.pendingBlock && (skillPracticeTimer.running || skillPracticeTimer.seconds > 0));
+  if (inPractice) {
+    const elapsed = formatTime(skillPracticeTimer.seconds);
+    const remainingSeconds = Math.max(0, BLOCK_DURATION_SECONDS - skillPracticeTimer.seconds);
+    const totalLabel = formatTime(BLOCK_DURATION_SECONDS);
+    if (ui.skillTimerStatus) ui.skillTimerStatus.textContent = `TRAVAIL — ${elapsed} / ${totalLabel}`;
+    const warningActive = skillPracticeTimer.running && remainingSeconds <= 5;
+    applySkillPhaseClasses({ recovery: false, warning: warningActive });
+    return;
+  }
+  applySkillPhaseClasses();
 }
 
 function stopSkillRecovery() {
@@ -1074,7 +1173,8 @@ function startSkillRecovery(seconds) {
   if (skillRecoveryTimer.running) return;
   const duration = Math.max(0, Math.floor(seconds));
   if (duration <= 0) {
-    ui.skillTimerStatus.textContent = 'Bloc terminé : renseigne les observables puis valide.';
+    if (ui.skillTimerStatus) ui.skillTimerStatus.textContent = 'Bloc terminé : renseigne les observables puis valide.';
+    applySkillPhaseClasses();
     updateSkillControlState();
     return;
   }
@@ -1082,7 +1182,6 @@ function startSkillRecovery(seconds) {
   skillRecoveryTimer.remaining = duration;
   skillRecoveryTimer.running = true;
   updateSkillPracticeDisplay();
-  ui.skillTimerStatus.textContent = `Récupération : ${formatTime(skillRecoveryTimer.remaining)} (renseigne puis laisse valider)`;
   skillRecoveryTimer.interval = setInterval(() => {
     if (!skillRecoveryTimer.running) return;
     skillRecoveryTimer.remaining = Math.max(0, skillRecoveryTimer.remaining - 1);
@@ -1104,11 +1203,13 @@ function updateSkillControlState() {
   const hasTime = skillPracticeTimer.seconds > 0;
   const ready = isSkillReady();
   const recovering = skillRecoveryTimer.running;
+  const sasActive = skillSasTimer.running;
   if (ui.skillStart) {
-    ui.skillStart.disabled = !ready || pending || skillPracticeTimer.running || sessionComplete || recovering;
+    const startDisabled = sasActive ? false : !ready || pending || skillPracticeTimer.running || sessionComplete || recovering;
+    ui.skillStart.disabled = startDisabled;
   }
   if (ui.skillEndBlock) {
-    ui.skillEndBlock.disabled = pending || sessionComplete || (!skillPracticeTimer.running && !hasTime) || recovering;
+    ui.skillEndBlock.disabled = sasActive || pending || sessionComplete || (!skillPracticeTimer.running && !hasTime) || recovering;
   }
   if (ui.skillValidate) {
     ui.skillValidate.disabled = !pending;
@@ -1130,7 +1231,7 @@ function ensureSkillSession() {
     durationMinutes: duration,
     expectedLocked: false,
   };
-  ui.skillTimerStatus.textContent = 'Séance démarrée : lance le bloc 1.';
+  if (ui.skillTimerStatus) ui.skillTimerStatus.textContent = 'Séance démarrée : lance le bloc 1.';
   updateSkillBlockCounter();
   updateSkillControlState();
   persistState(false);
@@ -1205,6 +1306,7 @@ function renderSkillStatus() {
 }
 
 function validateSkillBlock() {
+  stopSkillSasCountdown();
   if (!isSkillReady()) {
     setSkillSaveStatus('Sélectionne un exercice dans chaque famille.');
     return;
@@ -1284,6 +1386,7 @@ function finalizeSkillSession() {
   const session = state.skill.session;
   if (!session) return;
   stopSkillRecovery();
+  stopSkillSasCountdown();
   state.skill.lastSession = {
     recordedAt: new Date().toISOString(),
     durationMinutes: session.durationMinutes || sanitizeSkillDuration(state.skill.duration),
@@ -1301,7 +1404,7 @@ function finalizeSkillSession() {
   updateSkillBlockCounter();
   persistState();
   renderSkillInputs();
-  ui.skillTimerStatus.textContent = 'Séance terminée. Génère le QR ou lance une nouvelle séance.';
+  if (ui.skillTimerStatus) ui.skillTimerStatus.textContent = 'Séance terminée. Génère le QR ou lance une nouvelle séance.';
   updateSkillControlState();
   showSkillCompletionModal();
   showToast('Séance Skill terminée', 'ok');
@@ -1317,7 +1420,7 @@ function resetSkillInputs(clearValues) {
   if (state.skill.session) state.skill.session.pendingBlock = null;
   skillPracticeTimer.seconds = 0;
   resetSkillPractice(true);
-  ui.skillTimerStatus.textContent = 'Bloc réinitialisé.';
+  if (ui.skillTimerStatus) ui.skillTimerStatus.textContent = 'Bloc réinitialisé.';
   updateSkillControlState();
   persistState(false);
   renderSkillInputs();
@@ -1326,6 +1429,7 @@ function resetSkillInputs(clearValues) {
 function resetSkillSession(message, options = {}) {
   const { unlock = false, clearLast = true } = options;
   stopSkillRecovery();
+  stopSkillSasCountdown();
   if (message) {
     setSkillSaveStatus(message);
   }
