@@ -225,6 +225,7 @@ const skillPracticeTimer = { running: false, seconds: 0, interval: null };
 const skillRecoveryTimer = { running: false, remaining: 0, interval: null };
 const skillSasTimer = { running: false, remaining: 0, interval: null };
 let toastTimer = null;
+let confirmModalOpen = false;
 let skillStartDefaultLabel = '';
 
 init();
@@ -550,8 +551,14 @@ function bindActions() {
   ui.trainingQrBtn.addEventListener('click', handleTrainingQr);
 
   ui.skillStart?.addEventListener('click', handleSkillStartClick);
-  ui.skillEndBlock?.addEventListener('click', () => {
-    openSkillEndBlockConfirm();
+  ui.skillEndBlock?.addEventListener('click', async () => {
+    const ok = await openConfirmModal({
+      title: 'Terminer le bloc ?',
+      message: 'Confirmer : terminer ce bloc et passer en récupération ?\n\nAttention : cette action est irréversible.',
+      confirmText: 'Oui, terminer',
+      cancelText: 'Annuler',
+    });
+    if (ok) completeSkillPractice(false);
   });
   ui.skillDuration?.addEventListener('change', handleSkillDurationChange);
   ui.skillValidate?.addEventListener('click', validateSkillBlock);
@@ -742,7 +749,7 @@ function renderTrainingActive() {
   }
   ui.trainingActiveName.textContent = exercise.name;
   ui.trainingActiveHint.textContent = exercise.levels
-    .map((lvl) => `N${lvl.n} · ${lvl.label} (${lvl.expected} reps)`)
+    .map((lvl) => `N${lvl.n} · ${lvl.label}`)
     .join(' • ');
   const info = state.training.history[exercise.id];
   if (info?.lastAt) {
@@ -771,13 +778,13 @@ function startTrainingTimer() {
   if (trainingTimer.running) return;
   if (trainingTimer.remaining <= 0) resetTrainingTimer();
   trainingTimer.running = true;
-  ui.trainingTimerHint.textContent = 'Travail en cours…';
+  ui.trainingTimerHint.textContent = 'Test en cours — max reps !';
   trainingTimer.interval = setInterval(() => {
     if (trainingTimer.remaining <= 1) {
       pauseTrainingTimer(false);
       trainingTimer.remaining = 0;
       updateTrainingTimer();
-      ui.trainingTimerHint.textContent = 'Terminé ! Renseigne les répétitions.';
+      ui.trainingTimerHint.textContent = 'Terminé — note ton score N1 ou N2.';
       return;
     }
     trainingTimer.remaining -= 1;
@@ -992,7 +999,7 @@ function renderSkillInputs() {
       expectedHint.className = 'hint';
       expectedHint.textContent = lockExpected
         ? 'Objectif verrouillé pour toute la séance.'
-        : `Modifiable avant le départ. Limite : ${bounds.min}–${bounds.max}.`;
+        : `Repère de la fiche (théorique). Ajuste ton objectif (±5) pour rester cohérent pendant la séance. Fourchette : ${bounds.min}–${bounds.max}.`;
     }
     const doneLabel = document.createElement('label');
     doneLabel.textContent = 'Réalisé';
@@ -1657,6 +1664,20 @@ function renderQr(payload, container, sizeLabel) {
     correctLevel: QRCode.CorrectLevel?.L ?? 1,
     margin: 2,
   });
+  const toggleBtn = document.createElement('button');
+  toggleBtn.type = 'button';
+  toggleBtn.className = 'btn ghost';
+  toggleBtn.textContent = 'Afficher les détails';
+  const pre = document.createElement('pre');
+  pre.className = 'qr-json';
+  pre.textContent = json;
+  pre.classList.add('is-hidden');
+  toggleBtn.addEventListener('click', () => {
+    const hidden = pre.classList.toggle('is-hidden');
+    toggleBtn.textContent = hidden ? 'Afficher les détails' : 'Masquer les détails';
+  });
+  container.appendChild(toggleBtn);
+  container.appendChild(pre);
 }
 
 function exportState() {
@@ -1738,11 +1759,95 @@ function openExerciseModal(exercise) {
   const list = document.createElement('ul');
   exercise.levels.forEach((lvl) => {
     const li = document.createElement('li');
-    li.textContent = `N${lvl.n} · ${lvl.label} (${lvl.expected} reps)`;
+    li.textContent = `N${lvl.n} · ${lvl.label} (${lvl.expected} répétitions)`;
     list.appendChild(li);
   });
   ui.modalBody.appendChild(list);
   ui.modal.classList.remove('hidden');
+}
+
+function openConfirmModal({ title, message, confirmText = 'Oui', cancelText = 'Annuler' } = {}) {
+  if (confirmModalOpen) {
+    return Promise.resolve(false);
+  }
+  if (!ui.modal || !ui.modalBody) {
+    const fallbackText = message || title || 'Confirmer cette action ?';
+    return Promise.resolve(window.confirm(fallbackText));
+  }
+  confirmModalOpen = true;
+  const prevDisabled = ui.skillEndBlock ? ui.skillEndBlock.disabled : null;
+  if (ui.skillEndBlock) ui.skillEndBlock.disabled = true;
+  return new Promise((resolve) => {
+    ui.modalBody.textContent = '';
+    const wrapper = document.createElement('div');
+    wrapper.className = 'lock-confirm';
+    if (title) {
+      const titleEl = document.createElement('h3');
+      titleEl.textContent = title;
+      wrapper.appendChild(titleEl);
+    }
+    if (message) {
+      const messageEl = document.createElement('p');
+      const parts = String(message).split('\n');
+      parts.forEach((part, index) => {
+        if (index > 0) messageEl.appendChild(document.createElement('br'));
+        messageEl.appendChild(document.createTextNode(part));
+      });
+      wrapper.appendChild(messageEl);
+    }
+    const actions = document.createElement('div');
+    actions.className = 'confirm-actions';
+    const confirmBtn = document.createElement('button');
+    confirmBtn.className = 'btn primary';
+    confirmBtn.type = 'button';
+    confirmBtn.textContent = confirmText;
+    const cancelBtn = document.createElement('button');
+    cancelBtn.className = 'btn ghost';
+    cancelBtn.type = 'button';
+    cancelBtn.textContent = cancelText;
+    actions.appendChild(confirmBtn);
+    actions.appendChild(cancelBtn);
+    wrapper.appendChild(actions);
+    ui.modalBody.appendChild(wrapper);
+    ui.modal.classList.remove('hidden');
+
+    const cleanup = () => {
+      confirmModalOpen = false;
+      if (ui.skillEndBlock && prevDisabled !== null) {
+        ui.skillEndBlock.disabled = prevDisabled;
+      }
+      confirmBtn?.removeEventListener('click', onConfirm);
+      cancelBtn?.removeEventListener('click', onCancel);
+      ui.modal?.removeEventListener('click', onOverlayClick);
+      ui.modalClose?.removeEventListener('click', onCancel);
+    };
+
+    const handleResult = (result) => {
+      cleanup();
+      closeModal();
+      resolve(result);
+    };
+
+    const onConfirm = (event) => {
+      event?.preventDefault();
+      handleResult(true);
+    };
+    const onCancel = (event) => {
+      event?.preventDefault();
+      handleResult(false);
+    };
+    const onOverlayClick = (event) => {
+      if (event.target === ui.modal) {
+        event.stopPropagation();
+        handleResult(false);
+      }
+    };
+
+    confirmBtn?.addEventListener('click', onConfirm);
+    cancelBtn?.addEventListener('click', onCancel);
+    ui.modal?.addEventListener('click', onOverlayClick);
+    ui.modalClose?.addEventListener('click', onCancel);
+  });
 }
 
 function closeModal() {
@@ -1886,29 +1991,6 @@ function openSkillResetConfirm() {
   document.getElementById('skill-reset-cancel')?.addEventListener('click', closeModal);
 }
 
-function openSkillEndBlockConfirm() {
-  if (!ui.modal || !ui.modalBody) {
-    if (window.confirm('Terminer le bloc ?\n\nLe bloc va passer immédiatement en récupération.\n\nCette action est irréversible.')) {
-      completeSkillPractice(false);
-    }
-    return;
-  }
-  ui.modalBody.innerHTML = `
-    <div class="lock-confirm">
-      <h3>Terminer le bloc ?</h3>
-      <p>Le bloc va passer immédiatement en récupération.\n\nCette action est irréversible.</p>
-      <div class="confirm-actions">
-        <button class="btn primary" id="skill-endblock-yes">Oui, terminer</button>
-        <button class="btn ghost" id="skill-endblock-no">Annuler</button>
-      </div>
-    </div>`;
-  ui.modal.classList.remove('hidden');
-  document.getElementById('skill-endblock-yes')?.addEventListener('click', () => {
-    completeSkillPractice(false);
-    closeModal();
-  });
-  document.getElementById('skill-endblock-no')?.addEventListener('click', closeModal);
-}
 
 function showSkillCompletionModal() {
   if (!ui.modal || !ui.modalBody) {
