@@ -854,6 +854,8 @@ function renderTrainingHistory() {
     const exercise = EXERCISES.find((ex) => ex.id === id);
     const block = document.createElement('div');
     block.className = 'history-item';
+     const historyFamilyClass = getTrainingFamilyClass(exercise?.family);
+     if (historyFamilyClass) block.classList.add(historyFamilyClass);
     const title = document.createElement('h4');
     title.textContent = exercise?.name || id;
     block.appendChild(title);
@@ -1655,10 +1657,6 @@ function renderQr(payload, container, sizeLabel) {
     correctLevel: QRCode.CorrectLevel?.L ?? 1,
     margin: 2,
   });
-  const pre = document.createElement('pre');
-  pre.className = 'qr-json';
-  pre.textContent = json;
-  container.appendChild(pre);
 }
 
 function exportState() {

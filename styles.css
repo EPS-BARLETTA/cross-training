@@ -1434,9 +1434,11 @@ select:focus {
     opacity 0.18s ease;
 }
 
-.exercise-card:hover {
-  transform: translateY(-3px);
-  box-shadow: 0 6px 14px rgba(0, 0, 0, 0.12);
+@media (hover: hover) and (pointer: fine) {
+  .exercise-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 6px 14px rgba(0, 0, 0, 0.12);
+  }
 }
 
 .pill-filter {
@@ -1450,4 +1452,88 @@ select:focus {
 .pill-filter.active {
   transform: translateY(-2px);
   box-shadow: 0 4px 10px rgba(0, 0, 0, 0.15);
+}
+
+/* Fond léger teinté pour le filtre actif, sans toucher à la bordure */
+.pill-filter.active.filter-cardio {
+  background-color: rgba(59, 167, 255, 0.12);
+}
+
+.pill-filter.active.filter-haut {
+  background-color: rgba(255, 90, 90, 0.12);
+}
+
+.pill-filter.active.filter-bas {
+  background-color: rgba(61, 220, 132, 0.12);
+}
+
+.pill-filter.active.filter-gainage {
+  background-color: rgba(166, 107, 255, 0.12);
+}
+
+
+/* ===============================
+   CARTE EXERCICE SÉLECTIONNÉE
+================================= */
+
+.exercise-card {
+  position: relative;
+  transition: all 0.2s ease;
+}
+
+/* Base sélection */
+.exercise-card.is-selected {
+  border-width: 4px;
+  transform: translateY(-4px);
+  box-shadow: 0 10px 22px rgba(0, 0, 0, 0.18);
+}
+
+/* Fond teinté par famille */
+
+.exercise-card.family-cardio.is-selected {
+  background-color: rgba(59, 167, 255, 0.08);
+}
+
+.exercise-card.family-haut.is-selected {
+  background-color: rgba(255, 90, 90, 0.08);
+}
+
+.exercise-card.family-bas.is-selected {
+  background-color: rgba(61, 220, 132, 0.08);
+}
+
+.exercise-card.family-gainage.is-selected {
+  background-color: rgba(166, 107, 255, 0.08);
+}
+
+/* Badge ✓ Sélectionné */
+
+.exercise-card.is-selected::after {
+  content: "✓ Sélectionné";
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 4px 8px;
+  border-radius: 20px;
+  color: white;
+}
+
+/* Couleur badge par famille */
+
+.exercise-card.family-cardio.is-selected::after {
+  background-color: #3BA7FF;
+}
+
+.exercise-card.family-haut.is-selected::after {
+  background-color: #FF5A5A;
+}
+
+.exercise-card.family-bas.is-selected::after {
+  background-color: #3DDC84;
+}
+
+.exercise-card.family-gainage.is-selected::after {
+  background-color: #A66BFF;
 }
