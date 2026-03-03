@@ -981,18 +981,15 @@ function renderSkillInputs() {
   if (ui.skillDuration) ui.skillDuration.value = String(state.skill.duration);
   ui.skillResultsGrid.innerHTML = '';
   const lockExpected = Boolean(state.skill.session?.expectedLocked);
+  const blockStarted = Boolean(state.skill.session?.blockStarted);
   FAMILIES.forEach((family) => {
     const row = document.createElement('div');
     row.className = 'result-card';
     row.dataset.family = family.id;
     const exercise = EXERCISES.find((ex) => ex.id === state.skill.selection[family.id]);
     const level = state.skill.levels[family.id] || 1;
-    const bounds = exercise ? getSkillObjectiveBounds(exercise.id, level) : null;
     const inputState = state.skill.inputs[family.id] || { expected: '', done: '' };
     state.skill.inputs[family.id] = inputState;
-    if (exercise && inputState.expected === '') {
-      inputState.expected = String(getExpected(exercise.id, state.skill.levels[family.id]));
-    }
     const title = document.createElement('h4');
     title.textContent = exercise ? `${exercise.name} — N${state.skill.levels[family.id]}` : `${family.label} (à choisir)`;
     row.appendChild(title);
@@ -1002,13 +999,8 @@ function renderSkillInputs() {
     expectedLabel.textContent = 'Objectif';
     const expectedInput = document.createElement('input');
     expectedInput.type = 'number';
-    if (bounds) {
-      expectedInput.min = String(bounds.min);
-      expectedInput.max = String(bounds.max);
-    } else {
-      expectedInput.min = '0';
-      expectedInput.removeAttribute('max');
-    }
+    expectedInput.min = '1';
+    expectedInput.removeAttribute('max');
     expectedInput.value = inputState.expected ?? '';
     expectedInput.addEventListener('input', () => {
       inputState.expected = expectedInput.value;
@@ -1017,12 +1009,12 @@ function renderSkillInputs() {
     expectedInput.disabled = lockExpected;
     expectedLabel.appendChild(expectedInput);
     let expectedHint = null;
-    if (exercise && bounds) {
+    if (exercise) {
       expectedHint = document.createElement('p');
       expectedHint.className = 'hint';
       expectedHint.textContent = lockExpected
         ? 'Objectif verrouillé pour toute la séance.'
-        : `Repère de la fiche (théorique). Ajuste ton objectif (±5) pour rester cohérent pendant la séance. Fourchette : ${bounds.min}–${bounds.max}.`;
+        : 'Renseigne ton objectif (nombre > 0) avant de démarrer.';
     }
     const doneLabel = document.createElement('label');
     doneLabel.textContent = 'Réalisé';
@@ -1030,6 +1022,7 @@ function renderSkillInputs() {
     doneInput.type = 'number';
     doneInput.min = '0';
     doneInput.value = inputState.done ?? '';
+    doneInput.disabled = !blockStarted;
     doneInput.addEventListener('input', () => {
       inputState.done = doneInput.value;
       persistState(false);
@@ -1038,6 +1031,12 @@ function renderSkillInputs() {
     fields.appendChild(expectedLabel);
     if (expectedHint) fields.appendChild(expectedHint);
     fields.appendChild(doneLabel);
+    if (doneInput.disabled) {
+      const doneHint = document.createElement('p');
+      doneHint.className = 'hint';
+      doneHint.textContent = 'Démarre le bloc pour renseigner Réalisé.';
+      fields.appendChild(doneHint);
+    }
     row.appendChild(fields);
     ui.skillResultsGrid.appendChild(row);
   });
@@ -1065,33 +1064,11 @@ function handleSkillStartClick() {
 function ensureSkillObjectivesReadyForStart(session) {
   const details = collectSkillObjectiveDetails();
   const issues = findSkillObjectiveIssues(details);
-  if (issues.invalid.length) {
-    const message = issues.invalid.map((detail) => formatObjectiveInvalidMessage(detail)).join('\n');
-    alert(message);
-    setSkillSaveStatus(issues.invalid[0] ? formatObjectiveInvalidMessage(issues.invalid[0]) : 'Objectif invalide.');
+  if (issues.missing.length || issues.invalid.length) {
+    const warn = 'Renseigne un objectif (nombre supérieur à 0) pour chaque exercice avant de démarrer.';
+    alert(warn);
+    setSkillSaveStatus(warn);
     return false;
-  }
-  if (issues.missing.length) {
-    if (!session || session.expectedLocked) {
-      const missingNames = issues.missing.map((detail) => `${detail.exercise.name} (niveau N${detail.level})`).join(', ');
-      const warn = `Objectifs manquants pour ${missingNames}.`;
-      alert(warn);
-      setSkillSaveStatus(warn);
-      return false;
-    }
-    const list = issues.missing.map((detail) => `- ${detail.exercise.name} (niveau N${detail.level})`).join('\n');
-    const defaults = issues.missing
-      .map((detail) => `On utilisera la valeur de la fiche (niveau N${detail.level}) :\n${detail.exercise.name} = ${detail.base}`)
-      .join('\n\n');
-    const confirmText = `Objectifs manquants.\n\nPour :\n${list}\n\n${defaults}\n\nOK = valider et démarrer\nAnnuler = modifier`;
-    if (!window.confirm(confirmText)) {
-      return false;
-    }
-    issues.missing.forEach((detail) => {
-      state.skill.inputs[detail.familyId].expected = String(detail.base);
-    });
-    persistState(false);
-    renderSkillInputs();
   }
   if (shouldShowBaseObjectivesReminder(details) && ui.skillTimerStatus) {
     ui.skillTimerStatus.textContent = 'Rappel : tu démarres avec les valeurs de base des fiches.';
@@ -1177,6 +1154,15 @@ function startSkillPractice() {
   }
   stopSkillSasCountdown();
   if (skillPracticeTimer.running) return;
+  if (!session.blockStarted) {
+    session.blockStarted = true;
+    FAMILIES.forEach((family) => {
+      state.skill.inputs[family.id] = state.skill.inputs[family.id] || { expected: '', done: '' };
+      state.skill.inputs[family.id].done = '';
+    });
+    persistState(false);
+    renderSkillInputs();
+  }
   skillPracticeTimer.running = true;
   if (skillPracticeTimer.seconds === 0) {
     if (ui.skillTimerStatus) ui.skillTimerStatus.textContent = `Bloc ${session.currentBlock}/${session.totalBlocks} en cours…`;
@@ -1211,6 +1197,9 @@ function resetSkillPractice(keepStatus) {
   if (state.skill.session?.pendingBlock) {
     if (ui.skillTimerStatus) ui.skillTimerStatus.textContent = 'Valide ou réinitialise le bloc pour relancer le chrono.';
     return;
+  }
+  if (state.skill.session) {
+    state.skill.session.blockStarted = false;
   }
   pauseSkillPractice(false);
   skillPracticeTimer.seconds = 0;
@@ -1365,6 +1354,7 @@ function ensureSkillSession() {
     pendingBlock: null,
     durationMinutes: duration,
     expectedLocked: false,
+    blockStarted: false,
   };
   if (ui.skillTimerStatus) ui.skillTimerStatus.textContent = 'Séance démarrée : lance le bloc 1.';
   updateSkillBlockCounter();
@@ -1460,15 +1450,8 @@ function validateSkillBlock() {
   }
   const validationDetails = collectSkillObjectiveDetails();
   const validationIssues = findSkillObjectiveIssues(validationDetails);
-  if (validationIssues.invalid.length) {
-    const message = formatObjectiveInvalidMessage(validationIssues.invalid[0]);
-    setSkillSaveStatus(message);
-    alert(message);
-    return;
-  }
-  if (validationIssues.missing.length) {
-    const missingDetail = validationIssues.missing[0];
-    const warn = `Objectif manquant pour ${missingDetail.exercise.name} (niveau N${missingDetail.level}).`;
+  if (validationIssues.invalid.length || validationIssues.missing.length) {
+    const warn = 'Objectif manquant ou invalide (doit être > 0).';
     setSkillSaveStatus(warn);
     alert(warn);
     return;
@@ -1482,7 +1465,8 @@ function validateSkillBlock() {
   FAMILIES.forEach((family) => {
     const exerciseId = state.skill.selection[family.id];
     if (!exerciseId) return;
-    const expected = parseNumber(state.skill.inputs[family.id]?.expected) ?? getExpected(exerciseId, state.skill.levels[family.id]);
+    const expectedValue = parseNumber(state.skill.inputs[family.id]?.expected);
+    const expected = expectedValue != null ? expectedValue : 0;
     const done = parseNumber(state.skill.inputs[family.id]?.done) ?? 0;
     block.exercises[family.id] = {
       id: exerciseId,
@@ -1509,6 +1493,7 @@ function validateSkillBlock() {
     finalizeSkillSession();
   } else {
     session.currentBlock = completedBlocks + 1;
+    session.blockStarted = false;
     setSkillSaveStatus(`Bloc ${completedBlocks} enregistré. Bloc ${session.currentBlock}/${session.totalBlocks} prêt.`);
     skillPracticeTimer.seconds = 0;
     updateSkillPracticeDisplay();
@@ -1545,6 +1530,7 @@ function accumulateSkillTotals(entry) {
 function finalizeSkillSession() {
   const session = state.skill.session;
   if (!session) return;
+  session.blockStarted = false;
   stopSkillRecovery();
   stopSkillSasCountdown();
   state.skill.lastSession = {
@@ -1572,6 +1558,9 @@ function finalizeSkillSession() {
 
 function resetSkillInputs(clearValues) {
   stopSkillRecovery();
+  if (state.skill.session) {
+    state.skill.session.blockStarted = false;
+  }
   if (clearValues) {
     FAMILIES.forEach((family) => {
       state.skill.inputs[family.id] = { expected: '', done: '' };
@@ -1588,6 +1577,9 @@ function resetSkillInputs(clearValues) {
 
 function resetSkillSession(message, options = {}) {
   const { unlock = false, clearLast = true } = options;
+  if (state.skill.session) {
+    state.skill.session.blockStarted = false;
+  }
   stopSkillRecovery();
   stopSkillSasCountdown();
   if (message) {
@@ -1792,7 +1784,7 @@ function openExerciseModal(exercise) {
   const list = document.createElement('ul');
   exercise.levels.forEach((lvl) => {
     const li = document.createElement('li');
-    li.textContent = `N${lvl.n} · ${lvl.label} (${lvl.expected} répétitions)`;
+    li.textContent = `N${lvl.n} · ${lvl.label}`;
     list.appendChild(li);
   });
   ui.modalBody.appendChild(list);
@@ -2086,13 +2078,6 @@ function parseNumber(value) {
   return Number.isFinite(parsed) ? parsed : null;
 }
 
-function getSkillObjectiveBounds(exerciseId, level) {
-  const base = getExpected(exerciseId, level);
-  const min = Math.max(0, base - 5);
-  const max = base + 5;
-  return { base, min, max };
-}
-
 function collectSkillObjectiveDetails() {
   const details = [];
   FAMILIES.forEach((family) => {
@@ -2101,7 +2086,7 @@ function collectSkillObjectiveDetails() {
     const exercise = EXERCISES.find((ex) => ex.id === exerciseId);
     if (!exercise) return;
     const level = state.skill.levels[family.id] || 1;
-    const bounds = getSkillObjectiveBounds(exerciseId, level);
+    const base = getExpected(exerciseId, level);
     const inputState = state.skill.inputs[family.id] || { expected: '', done: '' };
     state.skill.inputs[family.id] = inputState;
     const raw = inputState.expected;
@@ -2111,9 +2096,7 @@ function collectSkillObjectiveDetails() {
       familyId: family.id,
       exercise,
       level,
-      base: bounds.base,
-      min: bounds.min,
-      max: bounds.max,
+      base,
       hasValue,
       value: numericValue,
     });
@@ -2129,15 +2112,11 @@ function findSkillObjectiveIssues(details) {
       missing.push(detail);
       return;
     }
-    if (detail.value == null || detail.value < detail.min || detail.value > detail.max) {
+    if (detail.value == null || detail.value <= 0) {
       invalid.push(detail);
     }
   });
   return { missing, invalid };
-}
-
-function formatObjectiveInvalidMessage(detail) {
-  return `Objectif invalide pour ${detail.exercise.name} : entre ${detail.min} et ${detail.max} (niveau N${detail.level}).`;
 }
 
 function shouldShowBaseObjectivesReminder(details) {
@@ -2267,6 +2246,9 @@ function mergeState(partial) {
     }
     if (typeof session.expectedLocked !== 'boolean') {
       session.expectedLocked = false;
+    }
+    if (typeof session.blockStarted !== 'boolean') {
+      session.blockStarted = false;
     }
   }
   return merged;
