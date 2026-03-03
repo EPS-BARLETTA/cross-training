@@ -1564,3 +1564,38 @@ select:focus {
 .is-hidden {
   display: none !important;
 }
+
+.family-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-left: 0.5rem;
+  padding: 0.15rem 0.5rem;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #0f1115;
+  background: rgba(255, 255, 255, 0.65);
+}
+
+.family-pill.family-cardio {
+  background: rgba(59, 167, 255, 0.25);
+  color: #0c2136;
+}
+
+.family-pill.family-haut {
+  background: rgba(255, 90, 90, 0.25);
+  color: #300b0b;
+}
+
+.family-pill.family-bas {
+  background: rgba(61, 220, 132, 0.25);
+  color: #0c2b19;
+}
+
+.family-pill.family-gainage {
+  background: rgba(166, 107, 255, 0.25);
+  color: #1f1033;
+}

@@ -226,6 +226,10 @@ const skillRecoveryTimer = { running: false, remaining: 0, interval: null };
 const skillSasTimer = { running: false, remaining: 0, interval: null };
 let toastTimer = null;
 let confirmModalOpen = false;
+const trainingInputHints = {
+  n1: 'Saisie : score N1 (1 minute — maximum).',
+  n2: 'Saisie : score N2 (1 minute — maximum).',
+};
 let skillStartDefaultLabel = '';
 
 init();
@@ -549,6 +553,10 @@ function bindActions() {
   ui.trainingReset.addEventListener('click', resetTrainingTimer);
   ui.trainingSave.addEventListener('click', saveTrainingScore);
   ui.trainingQrBtn.addEventListener('click', handleTrainingQr);
+  ui.trainingInputN1?.addEventListener('focus', () => showTrainingInputHint('n1'));
+  ui.trainingInputN1?.addEventListener('blur', clearTrainingInputHint);
+  ui.trainingInputN2?.addEventListener('focus', () => showTrainingInputHint('n2'));
+  ui.trainingInputN2?.addEventListener('blur', clearTrainingInputHint);
 
   ui.skillStart?.addEventListener('click', handleSkillStartClick);
   ui.skillEndBlock?.addEventListener('click', async () => {
@@ -784,7 +792,7 @@ function startTrainingTimer() {
       pauseTrainingTimer(false);
       trainingTimer.remaining = 0;
       updateTrainingTimer();
-      ui.trainingTimerHint.textContent = 'Terminé — note ton score N1 ou N2.';
+      ui.trainingTimerHint.textContent = 'Terminé ! Saisis N1/N2 puis clique sur Enregistrer.';
       return;
     }
     trainingTimer.remaining -= 1;
@@ -852,7 +860,15 @@ function renderTrainingHistory() {
   ui.trainingHistory.innerHTML = '';
   const entries = Object.entries(state.training.history)
     .filter(([, info]) => info.lastAt)
-    .sort((a, b) => new Date(b[1].lastAt) - new Date(a[1].lastAt));
+    .sort((a, b) => {
+      const exA = EXERCISES.find((ex) => ex.id === a[0]);
+      const exB = EXERCISES.find((ex) => ex.id === b[0]);
+      const order = { cardio: 0, haut: 1, bas: 2, gainage: 3 };
+      const famA = order[exA?.family] ?? 99;
+      const famB = order[exB?.family] ?? 99;
+      if (famA !== famB) return famA - famB;
+      return new Date(b[1].lastAt) - new Date(a[1].lastAt);
+    });
   if (!entries.length) {
     ui.trainingHistory.innerHTML = '<p class="hint">Aucun score pour le moment.</p>';
     return;
@@ -861,10 +877,17 @@ function renderTrainingHistory() {
     const exercise = EXERCISES.find((ex) => ex.id === id);
     const block = document.createElement('div');
     block.className = 'history-item';
-     const historyFamilyClass = getTrainingFamilyClass(exercise?.family);
-     if (historyFamilyClass) block.classList.add(historyFamilyClass);
+    const historyFamilyClass = getTrainingFamilyClass(exercise?.family);
+    if (historyFamilyClass) block.classList.add(historyFamilyClass);
     const title = document.createElement('h4');
     title.textContent = exercise?.name || id;
+    const familyLabel = FAMILIES.find((fam) => fam.id === exercise?.family)?.label;
+    if (familyLabel) {
+      const pill = document.createElement('span');
+      pill.className = `family-pill ${historyFamilyClass ?? ''}`.trim();
+      pill.textContent = familyLabel;
+      title.appendChild(pill);
+    }
     block.appendChild(title);
     const best = document.createElement('p');
     best.className = 'hint';
@@ -1492,7 +1515,17 @@ function validateSkillBlock() {
     updateSkillBlockCounter();
     persistState();
     renderSkillInputs();
-    startSkillPractice();
+    const activeEl = document.activeElement;
+    const isSkillInputFocused =
+      activeEl &&
+      activeEl.tagName === 'INPUT' &&
+      activeEl.closest('#skill-results-grid');
+    if (isSkillInputFocused) {
+      if (ui.skillTimerStatus) ui.skillTimerStatus.textContent = 'Termine la saisie puis appuie sur Démarrer bloc.';
+      updateSkillControlState();
+    } else {
+      startSkillPractice();
+    }
   }
   updateSkillControlState();
 }
@@ -2156,6 +2189,27 @@ function showToast(message, type = 'ok') {
   toastTimer = setTimeout(() => {
     ui.toast?.classList.remove('visible');
   }, 3600);
+}
+
+function showTrainingInputHint(type) {
+  const target = ui.trainingSaveStatus;
+  if (!target) return;
+  if (!target.dataset.prevMessageCaptured) {
+    target.dataset.prevMessage = target.textContent || '';
+    target.dataset.prevMessageCaptured = '1';
+  }
+  const message = type === 'n1' ? trainingInputHints.n1 : trainingInputHints.n2;
+  target.textContent = message;
+}
+
+function clearTrainingInputHint() {
+  const target = ui.trainingSaveStatus;
+  if (!target) return;
+  const current = target.textContent;
+  if (current === trainingInputHints.n1 || current === trainingInputHints.n2) {
+    target.textContent = target.dataset.prevMessage ?? '';
+  }
+  delete target.dataset.prevMessageCaptured;
 }
 
 function persistState(updateTime = true) {
