@@ -606,6 +606,8 @@ function renderTrainingFilters() {
     btn.className = 'pill-filter';
     btn.textContent = filter.label;
     btn.dataset.filter = filter.id;
+    const filterClass = getTrainingFilterClass(filter.id);
+    if (filterClass) btn.classList.add(filterClass);
     if (state.training.filter === filter.id) btn.classList.add('active');
     btn.addEventListener('click', () => {
       state.training.filter = filter.id;
@@ -624,7 +626,16 @@ function renderTrainingFilters() {
 }
 
 function refreshTrainingFilterButtons() {
-  ui.trainingFilterButtons?.forEach((btn) => btn.classList.toggle('active', btn.dataset.filter === state.training.filter));
+  const colorClasses = ['filter-cardio', 'filter-haut', 'filter-bas', 'filter-gainage'];
+  ui.trainingFilterButtons?.forEach((btn) => {
+    const isActive = btn.dataset.filter === state.training.filter;
+    btn.classList.toggle('active', isActive);
+    btn.classList.remove(...colorClasses);
+    if (isActive) {
+      const filterClass = getTrainingFilterClass(btn.dataset.filter);
+      if (filterClass) btn.classList.add(filterClass);
+    }
+  });
 }
 
 function renderTrainingGrid() {
@@ -635,6 +646,8 @@ function renderTrainingGrid() {
   list.forEach((exercise) => {
     const card = document.createElement('article');
     card.className = 'exercise-card';
+    const familyClass = getTrainingFamilyClass(exercise.family);
+    if (familyClass) card.classList.add(familyClass);
     if (state.training.activeId === exercise.id) card.classList.add('is-selected');
     const img = document.createElement('img');
     img.src = exercise.image;
@@ -685,6 +698,36 @@ function renderTrainingGrid() {
     ui.trainingGrid.appendChild(card);
   });
   renderTrainingActive();
+}
+
+function getTrainingFamilyClass(familyId) {
+  switch (familyId) {
+    case 'cardio':
+      return 'family-cardio';
+    case 'haut':
+      return 'family-haut';
+    case 'bas':
+      return 'family-bas';
+    case 'gainage':
+      return 'family-gainage';
+    default:
+      return '';
+  }
+}
+
+function getTrainingFilterClass(filterId) {
+  switch (filterId) {
+    case 'cardio':
+      return 'filter-cardio';
+    case 'haut':
+      return 'filter-haut';
+    case 'bas':
+      return 'filter-bas';
+    case 'gainage':
+      return 'filter-gainage';
+    default:
+      return '';
+  }
 }
 
 function renderTrainingActive() {

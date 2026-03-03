@@ -1324,7 +1324,6 @@ select:focus {
 
 .pill-filter.active {
   background: rgba(47, 79, 111, 0.35);
-  border-color: rgba(47, 79, 111, 0.65);
 }
 
 .pill-filter:focus-visible {
@@ -1375,6 +1374,8 @@ select:focus {
   animation: skill-warning-blink 0.6s steps(2, jump-none) infinite;
 }
 
+
+
 @keyframes skill-warning-blink {
   0% {
     opacity: 1;
@@ -1391,4 +1392,62 @@ select:focus {
   .is-warning {
     animation: none;
   }
+}
+
+.exercise-card.family-cardio {
+  border: 2px solid #3BA7FF;
+}
+
+.exercise-card.family-haut {
+  border: 2px solid #FF5A5A;
+}
+
+.exercise-card.family-bas {
+  border: 2px solid #3DDC84;
+}
+
+.exercise-card.family-gainage {
+  border: 2px solid #A66BFF;
+}
+
+.pill-filter.filter-cardio {
+  border: 2px solid #3BA7FF;
+}
+
+.pill-filter.filter-haut {
+  border: 2px solid #FF5A5A;
+}
+
+.pill-filter.filter-bas {
+  border: 2px solid #3DDC84;
+}
+
+.pill-filter.filter-gainage {
+  border: 2px solid #A66BFF;
+}
+
+.exercise-card {
+  transition:
+    border-color 0.18s ease,
+    transform 0.18s ease,
+    box-shadow 0.18s ease,
+    opacity 0.18s ease;
+}
+
+.exercise-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 6px 14px rgba(0, 0, 0, 0.12);
+}
+
+.pill-filter {
+  transition:
+    border-color 0.18s ease,
+    background-color 0.18s ease,
+    transform 0.15s ease,
+    box-shadow 0.18s ease;
+}
+
+.pill-filter.active {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.15);
 }
