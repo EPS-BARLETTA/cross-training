@@ -1537,3 +1537,26 @@ select:focus {
 .exercise-card.family-gainage.is-selected::after {
   background-color: #A66BFF;
 }
+.history-item.family-cardio,
+.history-item.family-haut,
+.history-item.family-bas,
+.history-item.family-gainage {
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+/* Historique - cerclage par famille */
+.history-item.family-cardio {
+  box-shadow: 0 0 0 2px #3BA7FF inset;
+}
+
+.history-item.family-haut {
+  box-shadow: 0 0 0 2px #FF5A5A inset;
+}
+
+.history-item.family-bas {
+  box-shadow: 0 0 0 2px #3DDC84 inset;
+}
+
+.history-item.family-gainage {
+  box-shadow: 0 0 0 2px #A66BFF inset;
+}
