@@ -550,7 +550,9 @@ function bindActions() {
   ui.trainingQrBtn.addEventListener('click', handleTrainingQr);
 
   ui.skillStart?.addEventListener('click', handleSkillStartClick);
-  ui.skillEndBlock?.addEventListener('click', () => completeSkillPractice(false));
+  ui.skillEndBlock?.addEventListener('click', () => {
+    openSkillEndBlockConfirm();
+  });
   ui.skillDuration?.addEventListener('change', handleSkillDurationChange);
   ui.skillValidate?.addEventListener('click', validateSkillBlock);
   ui.skillResetBlock?.addEventListener('click', () => {
@@ -1841,6 +1843,30 @@ function openSkillResetConfirm() {
     goToPage('skill_config', { force: true });
   });
   document.getElementById('skill-reset-cancel')?.addEventListener('click', closeModal);
+}
+
+function openSkillEndBlockConfirm() {
+  if (!ui.modal || !ui.modalBody) {
+    if (window.confirm('Terminer le bloc ?\n\nLe bloc va passer immédiatement en récupération.\n\nCette action est irréversible.')) {
+      completeSkillPractice(false);
+    }
+    return;
+  }
+  ui.modalBody.innerHTML = `
+    <div class="lock-confirm">
+      <h3>Terminer le bloc ?</h3>
+      <p>Le bloc va passer immédiatement en récupération.\n\nCette action est irréversible.</p>
+      <div class="confirm-actions">
+        <button class="btn primary" id="skill-endblock-yes">Oui, terminer</button>
+        <button class="btn ghost" id="skill-endblock-no">Annuler</button>
+      </div>
+    </div>`;
+  ui.modal.classList.remove('hidden');
+  document.getElementById('skill-endblock-yes')?.addEventListener('click', () => {
+    completeSkillPractice(false);
+    closeModal();
+  });
+  document.getElementById('skill-endblock-no')?.addEventListener('click', closeModal);
 }
 
 function showSkillCompletionModal() {
