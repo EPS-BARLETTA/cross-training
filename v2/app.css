@@ -346,3 +346,5 @@ body.dlg-fallback-open::after { content: ""; position: fixed; inset: 0; backgrou
   .obj { grid-template-columns: 1fr 50px 76px 50px; }
   .run-item { grid-template-columns: 1fr 90px; }
 }
+.lvl button:disabled { opacity: .35; cursor: not-allowed; }
+.go-train { margin-top: 10px; background: rgba(56, 189, 248, .14); border-color: rgba(56, 189, 248, .5); color: #bae6fd; }

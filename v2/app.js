@@ -231,17 +231,19 @@
     var s = state.student;
     var changed = s && (s.prenom.toLowerCase() !== prenom.toLowerCase() || s.nom !== nom);
     var apply = function (reset) {
-      if (reset) { stopRunSilently(); state.seance = newSeance(); }
+      if (reset) { stopRunSilently(); state.seance = newSeance(); state.records = {}; state.cfg = emptyCfg(); }
       state.student = { prenom: prenom, nom: nom, classe: classe, classeSaisie: classeSaisie, observer: observer };
       save();
       renderAll();
       showApp();
     };
-    if (changed && !seanceEmpty()) {
-      ask({ title: "👤 Autre élève", text: "La séance de " + s.prenom + " " + s.nom + ". n'est pas vide. Commencer une nouvelle séance pour " + prenom + " " + nom + ". ?",
-        foot: "La séance de " + s.prenom + " sera effacée de cette tablette.", yes: "Oui, nouvelle séance", danger: true }, function () { apply(true); });
+    var hasData = !seanceEmpty() || Object.keys(state.records).length;
+    if (changed && hasData) {
+      ask({ title: "👤 Autre élève", text: "Cette tablette contient la séance et le catalogue de " + s.prenom + " " + s.nom + ". Passer à " + prenom + " " + nom + ". ?",
+        foot: "La séance et le catalogue de " + s.prenom + " seront effacés de cette tablette (fais scanner son QR avant).", yes: "Oui, changer d'élève", danger: true }, function () { apply(true); });
       return;
     }
+    if (changed) { apply(true); return; }
     apply(false);
   });
 
@@ -312,7 +314,7 @@
       var t = state.seance.tests[e.id], r = state.records[e.id];
       var extra = which === "train"
         ? (t ? '<span class="score">Aujourd\'hui : ' + esc(bestTxt(t)) + "</span>" : "") +
-          (r && bestTxt(r) ? '<span class="lv">Record : ' + esc(bestTxt(r)) + "</span>" : "")
+          (r && bestTxt(r) ? '<span class="lv">📚 Dans mon catalogue · ' + esc(bestTxt(r)) + "</span>" : "")
         : "";
       return '<button type="button" class="ex-card f-' + e.family + '" data-ex="' + e.id + '">' +
         (which === "train" && t ? '<span class="done">✓ testé</span>' : "") +
@@ -460,27 +462,53 @@
     var l = e.levels.filter(function (x) { return x.n === lvl; })[0];
     return l ? l.expected : "";
   }
+  /* Catalogue de l'élève : seuls les exercices (et niveaux) testés en Entraînement
+     peuvent être choisis pour construire le Skill. */
+  function testedLevels(exId) {
+    var r = state.records[exId];
+    if (!r) return [];
+    return [1, 2].filter(function (n) { return r["n" + n] != null; });
+  }
+  function catalogue(famId) {
+    return EXERCISES.filter(function (e) { return e.family === famId && testedLevels(e.id).length; });
+  }
+  function sanitizeCfg() {
+    FAMILIES.forEach(function (f) {
+      var sel = state.cfg.selection[f.id];
+      var lv = sel ? testedLevels(sel) : [];
+      if (sel && !lv.length) { state.cfg.selection[f.id] = ""; state.cfg.objectives[f.id] = ""; return; }
+      if (sel && lv.indexOf(state.cfg.levels[f.id]) === -1) {
+        state.cfg.levels[f.id] = lv[lv.length - 1];
+        state.cfg.objectives[f.id] = String(expectedBase(sel, state.cfg.levels[f.id]));
+      }
+    });
+  }
   function renderSkillConfig() {
+    sanitizeCfg();
     $("skill-families").innerHTML = FAMILIES.map(function (f) {
       var sel = state.cfg.selection[f.id], lvl = state.cfg.levels[f.id] || 1;
-      var exs = EXERCISES.filter(function (e) { return e.family === f.id; });
-      var h = '<div class="fam-card f-' + f.id + '"><h3>' + esc(f.label) + '</h3><div class="pick">' +
-        exs.map(function (e) {
-          return '<button type="button" data-fam="' + f.id + '" data-pick="' + e.id + '" aria-pressed="' + (sel === e.id) + '">' + esc(e.name) + "</button>";
-        }).join("") + "</div>";
+      var exs = catalogue(f.id);
+      var h = '<div class="fam-card f-' + f.id + '"><h3>' + esc(f.label) + "</h3>";
+      if (!exs.length) {
+        return h + '<p class="fam-empty">Aucun exercice testé dans cette famille.</p>' +
+          '<button type="button" class="btn full go-train" data-gotrain="' + f.id + '">⏱️ Tester un exercice ' + esc(f.label.toLowerCase()) + "</button></div>";
+      }
+      h += '<div class="pick">' + exs.map(function (e) {
+        return '<button type="button" data-fam="' + f.id + '" data-pick="' + e.id + '" aria-pressed="' + (sel === e.id) + '">' + esc(e.name) + "</button>";
+      }).join("") + "</div>";
       if (sel) {
-        var e = EX[sel];
+        var e = EX[sel], r = state.records[sel], lv = testedLevels(sel);
         h += '<div class="lvl">' + e.levels.map(function (l) {
-          return '<button type="button" data-fam="' + f.id + '" data-lvl="' + l.n + '" aria-pressed="' + (lvl === l.n) + '">Niveau ' + l.n + "<small>" + esc(l.label) + "</small></button>";
+          var ok = lv.indexOf(l.n) !== -1;
+          return '<button type="button" data-fam="' + f.id + '" data-lvl="' + l.n + '" aria-pressed="' + (lvl === l.n) + '"' + (ok ? "" : " disabled") + ">Niveau " + l.n +
+            "<small>" + esc(l.label) + (ok ? " · test : " + r["n" + l.n] + "/min" : " · pas testé") + "</small></button>";
         }).join("") + "</div>";
-        var r = state.records[sel];
-        var recTxt = r && r["n" + lvl] != null ? " · record 1 min : " + r["n" + lvl] : "";
-        h += '<div class="obj"><label>Objectif par bloc<br><span class="muted small">repère ' + expectedBase(sel, lvl) + esc(recTxt) + '</span></label>' +
+        h += '<div class="obj"><label>Objectif par bloc<br><span class="muted small">repère ' + expectedBase(sel, lvl) + " · ton test : " + r["n" + lvl] + "/min</span></label>" +
           '<button type="button" data-fam="' + f.id + '" data-obj="-1">−</button>' +
           '<input type="number" inputmode="numeric" min="1" max="999" data-objin="' + f.id + '" value="' + esc(state.cfg.objectives[f.id]) + '">' +
           '<button type="button" data-fam="' + f.id + '" data-obj="1">+</button></div>';
       } else {
-        h += '<p class="fam-empty">Choisis un exercice.</p>';
+        h += '<p class="fam-empty">Choisis un exercice de ton catalogue.</p>';
       }
       return h + "</div>";
     }).join("");
@@ -496,9 +524,17 @@
     var b = e.target.closest("button");
     if (!b) return;
     var fam = b.dataset.fam;
+    if (b.dataset.gotrain) {
+      filters.train = b.dataset.gotrain;
+      renderFilter("train"); renderGrid("train");
+      selectTab("train");
+      return;
+    }
     if (b.dataset.pick) {
+      var lvs = testedLevels(b.dataset.pick);
       state.cfg.selection[fam] = b.dataset.pick;
-      state.cfg.objectives[fam] = String(expectedBase(b.dataset.pick, state.cfg.levels[fam] || 1));
+      state.cfg.levels[fam] = lvs.indexOf(state.cfg.levels[fam] || 1) !== -1 ? (state.cfg.levels[fam] || 1) : lvs[lvs.length - 1];
+      state.cfg.objectives[fam] = String(expectedBase(b.dataset.pick, state.cfg.levels[fam]));
     } else if (b.dataset.lvl) {
       var old = String(expectedBase(state.cfg.selection[fam], state.cfg.levels[fam] || 1));
       state.cfg.levels[fam] = +b.dataset.lvl;
@@ -528,6 +564,8 @@
 
   $("skill-start").addEventListener("click", function () {
     unlockAudio();
+    var empty = FAMILIES.filter(function (f) { return !catalogue(f.id).length; });
+    if (empty.length) { $("skill-config-hint").textContent = "Ton catalogue est incomplet : teste d'abord un exercice en " + empty.map(function (f) { return f.label; }).join(", ") + " (onglet Entraînement)."; return; }
     var missing = FAMILIES.filter(function (f) { return !state.cfg.selection[f.id]; });
     if (missing.length) { $("skill-config-hint").textContent = "Choisis un exercice en : " + missing.map(function (f) { return f.label; }).join(", ") + "."; return; }
     var bad = FAMILIES.filter(function (f) { var o = num(state.cfg.objectives[f.id]); return o == null || o <= 0; });
