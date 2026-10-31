@@ -1,227 +1,371 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="fr">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Cross Training – iPad</title>
-    <link rel="stylesheet" href="styles.css" />
-  </head>
-  <body>
-    <div class="app-shell">
-      <header class="top-bar">
-        <div class="brand">
-          <p class="eyebrow">EPS • Carnet hors-ligne</p>
-          <h1>Outil Cross Training</h1>
-        </div>
-        <div class="top-meta">
-          <span id="status-pill" class="status-pill">Non sauvegardé</span>
-          <nav class="global-nav" aria-label="Navigation principale">
-            <button class="nav-link" data-go="home">Accueil</button>
-            <button class="nav-link" data-go="identity">Identité</button>
-            <button class="nav-link" data-go="training" data-requires-identity="true">Entraînement</button>
-            <button class="nav-link" data-go="skill_config" data-requires-identity="true">Skill</button>
-          </nav>
-        </div>
-      </header>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#0d1220">
+  <title>Cross Training</title>
+  <link rel="stylesheet" href="app.css">
+</head>
+<body>
 
-      <button id="lock-badge" class="lock-badge hidden" type="button">🔒 Verrouillé</button>
+<!-- ============ IDENTIFICATION ============ -->
+<section id="screen-id" class="screen" hidden>
+  <div class="id-wrap">
+    <div class="brand-big">🏋️ Cross Training</div>
+    <p class="muted center">EPS · Lycée Vauban</p>
+    <form id="id-form" class="card" autocomplete="off">
+      <h1 id="id-title">Qui s'entraîne ?</h1>
+      <div class="seg seg-2 id-mode" id="id-mode">
+        <button type="button" data-guest="0">📱 C'est ma tablette</button>
+        <button type="button" data-guest="1">🤝 J'emprunte une tablette</button>
+      </div>
+      <p class="id-note" id="id-edit-note" hidden>Corrige l'orthographe, ta classe ou ton observateur : rien n'est effacé.<br>Un autre élève ? Ferme et utilise « ➕ Un autre élève ».</p>
+      <div class="id-grid">
+        <label class="field">Prénom de l'élève
+          <input id="id-prenom" required autocapitalize="words" placeholder="Léa">
+        </label>
+        <label class="field">Initiale du nom
+          <input id="id-nom" required maxlength="1" autocapitalize="characters" placeholder="D" class="initial">
+        </label>
+      </div>
+      <label class="field">Classe
+        <input id="id-classe" required autocapitalize="characters" placeholder="Ex. 4ème C, 2nde B, Terminale A">
+      </label>
+      <p id="id-classe-preview" class="classe-preview" aria-live="polite"></p>
+      <label class="field">Observateur <span class="muted small">(celui qui saisit les résultats)</span>
+        <input id="id-observer" autocapitalize="words" placeholder="Prénom du camarade ou « Prof »">
+      </label>
+      <button class="btn btn-go big full" id="id-submit" type="submit">C'est parti →</button>
+      <button id="id-cancel" class="btn ghost full" type="button" hidden>Annuler</button>
+      <button id="id-import" class="btn ghost full small" type="button">📥 J'ai déjà des résultats sur une autre tablette</button>
+    </form>
+  </div>
+</section>
 
-      <!-- Home -->
-      <section class="page active" data-page="home">
-        <div class="card hero-card home-card">
-          <h2 class="home-title">Cross Training</h2>
-          <div class="cta-row home-actions">
-            <button class="btn primary btn-large" data-go="identity">Démarrer</button>
-            <button class="btn ghost btn-large" id="howto-btn" type="button">Mode d’emploi</button>
-          </div>
-        </div>
-      </section>
-
-      <!-- Identity -->
-      <section class="page" data-page="identity">
-        <div class="card identity-card">
-          <header>
-            <h2>Identité élève</h2>
-            <p id="identity-hint" class="hint">Saisis prénom, initiale et classe pour activer les modes.</p>
-          </header>
-          <div class="identity-grid">
-            <label>Prénom<input id="student-first" type="text" autocomplete="off" placeholder="Lina" /></label>
-            <label>Initiale du nom<input id="student-last" type="text" autocomplete="off" placeholder="D" maxlength="1" inputmode="text" /></label>
-            <label>Classe<input id="student-class" type="text" autocomplete="off" placeholder="4C" /></label>
-            <label>Observateur<input id="observer" type="text" autocomplete="off" placeholder="Prof / camarade" /></label>
-          </div>
-          <div class="mode-choice">
-            <button class="btn primary" id="go-training" disabled>Mode Entraînement</button>
-            <button class="btn primary" id="go-skill" disabled>Mode Skill</button>
-            <button class="btn ghost" data-go="home">Retour accueil</button>
-          </div>
-        </div>
-      </section>
-
-      <!-- Training live -->
-      <section class="page" data-page="training">
-        <div class="page-nav">
-          <button class="btn ghost" data-go="home">Accueil</button>
-          <button class="btn ghost" data-go="identity">Identité</button>
-          <button class="btn secondary" id="training-finish" type="button">Fin d’entraînement</button>
-        </div>
-        <div class="card" id="training-panel">
-          <header>
-            <h2>Entraînement</h2>
-            <p>Test 1 minute : fais le maximum en N1, puis recommence en N2. Note tes scores — ils servent de base pour fixer tes objectifs en Skill.</p>
-          </header>
-          <div class="training-active" id="training-active">
-            <div class="active-info">
-              <p class="label">Exercice sélectionné</p>
-              <h3 id="training-active-name">Aucun exercice</h3>
-              <p id="training-active-hint" class="hint">Sélectionne une carte ci-dessous pour commencer.</p>
-              <p id="training-active-meta" class="meta"></p>
-            </div>
-            <div class="timer-box">
-              <p class="label">Chrono 1:00</p>
-              <p id="training-timer" class="timer-value">01:00</p>
-              <div class="timer-controls">
-                <button class="btn primary" id="training-start">Start</button>
-                <button class="btn secondary" id="training-pause">Pause</button>
-                <button class="btn ghost" id="training-reset">Reset</button>
-              </div>
-              <p id="training-timer-hint" class="hint"></p>
-            </div>
-            <div class="result-entry">
-              <label>Répétitions N1<input id="training-input-n1" type="number" min="0" /></label>
-              <label>Répétitions N2<input id="training-input-n2" type="number" min="0" /></label>
-              <button class="btn primary" id="training-save">Enregistrer le score</button>
-              <p id="training-save-status" class="hint"></p>
-            </div>
-          </div>
-          <div class="exercise-grid" id="training-grid"></div>
-        </div>
-      </section>
-
-      <!-- Training end -->
-      <section class="page" data-page="training_end">
-        <div class="page-nav">
-          <button class="btn ghost" data-go="training">← Retour entraînement</button>
-          <button class="btn ghost" data-go="home">Accueil</button>
-        </div>
-        <div class="card stack">
-          <section class="history" aria-labelledby="history-title">
-            <div class="section-head">
-              <h3 id="history-title">Historique (meilleurs scores)</h3>
-              <p>Records N1/N2 + dernière date.</p>
-            </div>
-            <div id="training-history" class="history-list"></div>
-          </section>
-          <section class="qr-block">
-            <div class="qr-actions">
-              <button class="btn primary" id="training-qr-btn">Générer QR Entraînement</button>
-              <p id="training-qr-size" class="hint"></p>
-            </div>
-            <div id="training-qr-output" class="qr-output"></div>
-          </section>
-          <section class="actions-card">
-            <header>
-              <h3>Sauvegarde & outils</h3>
-              <p>Exporter/Importer pour éviter les pertes.</p>
-            </header>
-            <div class="action-row">
-              <button class="btn secondary" id="export-btn">Exporter mes données</button>
-              <label class="btn ghost file-label">Importer<input type="file" id="import-input" accept="application/json" hidden /></label>
-              <button class="btn ghost" id="reset-btn">Reset total</button>
-              <button class="btn ghost" id="scanprof-help" type="button">ℹ️ ScanProf – explications</button>
-            </div>
-          </section>
-        </div>
-      </section>
-
-      <!-- Skill config -->
-      <section class="page" data-page="skill_config">
-        <div class="page-nav">
-          <button class="btn ghost" data-go="home">Accueil</button>
-          <button class="btn ghost" data-go="identity">Identité</button>
-        </div>
-        <div class="card skill-config-card">
-          <header>
-            <h2>Configurer ton Skill</h2>
-            <p>Sélectionne 1 exercice par famille puis choisis la durée.</p>
-          </header>
-          <div class="skill-builder" id="skill-builder"></div>
-          <div class="skill-config-row">
-            <label>Durée totale
-              <select id="skill-duration">
-                <option value="6">6 minutes (3 blocs)</option>
-                <option value="10" selected>10 minutes (5 blocs)</option>
-                <option value="16">16 minutes (8 blocs)</option>
-                <option value="20">20 minutes (10 blocs)</option>
-              </select>
-            </label>
-            <button class="btn primary" id="skill-config-next">Passer aux observations</button>
-          </div>
-          <button class="btn ghost" id="skill-new-session" type="button">Réinitialiser la configuration</button>
-        </div>
-      </section>
-
-      <!-- Skill run -->
-      <section class="page" data-page="skill_run">
-        <div class="page-nav">
-          <button class="btn ghost" data-go="skill_config">← Configuration</button>
-        </div>
-        <div class="card skill-run-card">
-          <div class="timer-box practice-box run">
-            <p class="label">Chrono pratique</p>
-            <p id="skill-practice-timer" class="timer-value big">00:00</p>
-            <p id="skill-block-counter" class="hint">Bloc 0/0</p>
-          </div>
-          <div class="run-controls">
-            <button class="btn btn-green" id="skill-start" type="button">Démarrer bloc</button>
-            <button class="btn btn-orange" id="skill-end-block" type="button">Bloc terminé</button>
-            <button class="btn btn-blue" id="skill-validate-block" type="button">Valider bloc</button>
-          </div>
-          <button class="btn btn-red" id="skill-reset-session" type="button">Reset séance</button>
-          <p id="skill-timer-status" class="hint"></p>
-          <p id="skill-save-status" class="hint"></p>
-          <div class="results-grid" id="skill-results-grid"></div>
-          <div class="block-actions">
-            <button class="btn ghost" id="skill-reset-block">Reset bloc</button>
-          </div>
-          <div id="skill-session-log" class="session-log"></div>
-        </div>
-      </section>
-
-      <!-- Skill QR -->
-      <section class="page" data-page="skill_qr">
-        <div class="page-nav">
-          <button class="btn ghost" data-go="skill_run">← Retour observations</button>
-        </div>
-        <div class="card">
-          <header>
-            <h2>QR Skill</h2>
-            <p>Scanne dans ScanProf dès que possible.</p>
-          </header>
-          <section class="qr-block">
-            <div class="qr-actions">
-              <button class="btn primary" id="skill-qr-btn">Régénérer le QR</button>
-              <p id="skill-qr-size" class="hint"></p>
-            </div>
-            <div id="skill-qr-output" class="qr-output"></div>
-          </section>
-          <div class="page-nav">
-            <button class="btn primary" id="skill-finish-home" type="button">Terminer et revenir à l’accueil</button>
-          </div>
-        </div>
-      </section>
+<!-- ============ APPLICATION ============ -->
+<section id="screen-app" class="screen" hidden>
+  <header class="topbar">
+    <div class="who">
+      <span class="who-name" id="who-name"></span>
+      <span class="badge" id="who-classe"></span>
+      <span class="who-obs" id="who-obs"></span>
     </div>
+    <div class="top-actions">
+      <button class="btn small btn-new" id="btn-new-top" type="button">🆕 Nouvelle séance</button>
+      <button class="btn small ghost" id="btn-change-id" type="button">👤 Profil</button>
+      <button class="btn small ghost" id="btn-help" type="button">❓ Aide</button>
+    </div>
+  </header>
 
-    <div id="toast" class="toast" role="status" aria-live="polite"></div>
+  <nav class="tabs" role="tablist">
+    <button class="tab t-train" data-tab="train" role="tab"><span>⏱️</span>Entraînement<b class="count" id="count-train"></b></button>
+    <button class="tab t-skill" data-tab="skill" role="tab"><span>🔥</span>Skill<b class="count" id="count-skill"></b></button>
+    <button class="tab t-fiches" data-tab="fiches" role="tab"><span>📄</span>Fiches</button>
+    <button class="tab t-hist" data-tab="hist" role="tab"><span>📈</span>Historique</button>
+    <button class="tab t-fin" data-tab="fin" role="tab"><span>✅</span>Fin de séance</button>
+  </nav>
 
-    <div id="modal" class="modal hidden" role="dialog" aria-modal="true">
-      <div class="modal-card">
-        <button id="modal-close" class="modal-close" aria-label="Fermer">×</button>
-        <div id="modal-body"></div>
+  <main class="panels">
+    <div id="guest-banner" class="guest-banner" hidden>
+      <p>🤝 <b>Tablette empruntée.</b> À la fin du cours, envoie tes résultats vers <b>ta</b> tablette.</p>
+      <button class="btn small" id="guest-send" type="button">📤 Envoyer mes résultats</button>
+    </div>
+    <div id="old-banner" class="old-banner" hidden>
+      <p id="old-banner-text"></p>
+      <div class="two">
+        <button class="btn btn-new" id="old-banner-new" type="button">🆕 Nouvelle séance</button>
+        <button class="btn ghost" id="old-banner-keep" type="button">Continuer cette séance</button>
       </div>
     </div>
 
-    <script src="qrcode.min.js"></script>
-    <script src="script.js"></script>
-  </body>
+    <!-- ENTRAÎNEMENT -->
+    <section class="panel" data-panel="train">
+      <div class="card intro">
+        <p><strong>Test d'1 minute</strong> : touche un exercice, lance le chrono, fais le maximum de répétitions. Chaque exercice testé entre dans <strong>ton catalogue</strong> 📚 : c'est avec lui que tu construis ton Skill.</p>
+      </div>
+      <div class="chips-filter" id="train-filter"></div>
+      <div class="ex-grid" id="train-grid"></div>
+    </section>
+
+    <!-- SKILL -->
+    <section class="panel" data-panel="skill" hidden>
+      <!-- Configuration -->
+      <div id="skill-config">
+        <div class="card intro">
+          <p><strong>Skill</strong> : construis ton circuit avec <strong>ton catalogue</strong> (les exercices testés en Entraînement) : 1 exercice par famille, son niveau et ton objectif de répétitions <em>par bloc</em>. Chaque bloc dure 2 minutes : circuit, puis récupération jusqu'à la fin des 2 minutes.</p>
+        </div>
+        <div class="fam-grid" id="skill-families"></div>
+        <div class="card">
+          <h2>Durée de la séance</h2>
+          <div class="seg seg-4" id="skill-duration">
+            <button type="button" data-min="6">6 min<small>3 blocs</small></button>
+            <button type="button" data-min="10">10 min<small>5 blocs</small></button>
+            <button type="button" data-min="16">16 min<small>8 blocs</small></button>
+            <button type="button" data-min="20">20 min<small>10 blocs</small></button>
+          </div>
+          <button class="btn btn-go big full" id="skill-start" type="button">▶️ Démarrer la séance</button>
+          <p class="hint" id="skill-config-hint"></p>
+        </div>
+        <div class="card" id="skill-last" hidden></div>
+      </div>
+
+      <!-- Séance en cours -->
+      <div id="skill-run" hidden>
+        <div class="run-head card" id="run-head">
+          <div class="run-phase" id="run-phase">TRAVAIL</div>
+          <div class="run-timer" id="run-timer">00:00</div>
+          <div class="run-sub"><span id="run-block">Bloc 1/5</span> · <span id="run-sub"></span></div>
+          <div class="run-bar"><i id="run-bar"></i></div>
+          <button class="btn big full" id="run-main" type="button">✋ J'ai fini le circuit</button>
+          <button class="btn full run-undo" id="run-undo" type="button" hidden>↩️ Oups, pas fini ! Annuler</button>
+          <p class="run-help" id="run-help"></p>
+        </div>
+        <div class="card">
+          <h2 id="run-inputs-title">Répétitions réalisées ce bloc</h2>
+          <div class="run-ex" id="run-ex"></div>
+        </div>
+        <div class="card">
+          <h2>Blocs enregistrés</h2>
+          <div id="run-log" class="log"></div>
+          <button class="btn danger full" id="run-stop" type="button">⏹ Arrêter la séance</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- FICHES -->
+    <section class="panel" data-panel="fiches" hidden>
+      <div class="chips-filter" id="fiches-filter"></div>
+      <div class="ex-grid" id="fiches-grid"></div>
+    </section>
+
+    <!-- HISTORIQUE -->
+    <section class="panel" data-panel="hist" hidden>
+      <div class="card">
+        <h2>📚 Catalogue de <span id="hist-name"></span></h2>
+        <p class="muted small">Meilleur score en 1 minute pour chaque exercice testé, et sa progression test après test.</p>
+        <div id="hist-catalogue"></div>
+      </div>
+      <div class="card">
+        <h2>🗓️ Séances</h2>
+        <div id="hist-seances" class="hist-list"></div>
+      </div>
+    </section>
+
+    <!-- FIN DE SÉANCE -->
+    <section class="panel" data-panel="fin" hidden>
+      <div class="card">
+        <h2>Récapitulatif de la séance</h2>
+        <div id="fin-recap" class="recap"></div>
+      </div>
+      <div class="card center">
+        <h2>QR code pour le prof</h2>
+        <div id="fin-qr" class="qr-box"></div>
+        <p class="muted small" id="fin-qr-info"></p>
+        <button class="btn btn-go big full" id="fin-fullscreen" type="button">🔍 Afficher en grand pour le scan</button>
+      </div>
+      <div class="card">
+        <h2>📒 Mon carnet de suivi</h2>
+        <p class="muted">Enregistre ta séance dans ton carnet d'entraînement.</p>
+        <button class="btn btn-carnet big full" id="fin-carnet" type="button">📒 Enregistrer dans mon carnet</button>
+      </div>
+      <div class="card" id="fin-xfer-card">
+        <h2>🤝 Tablette empruntée ?</h2>
+        <p class="muted">Envoie tes résultats vers ta tablette (QR code ou fichier).</p>
+        <button class="btn big full" id="fin-xfer" type="button">📤 Envoyer mes résultats vers ma tablette</button>
+      </div>
+      <div class="card">
+        <button class="btn btn-new big full" id="fin-new" type="button">🆕 Nouvelle séance</button>
+        <p class="muted small center">À faire à la fin, après le scan du prof et l'enregistrement dans le carnet.</p>
+      </div>
+    </section>
+  </main>
+  <footer class="foot">Cross Training - Equipe EPS Lycée Vauban - LUXEMBOURG - JB</footer>
+</section>
+
+<!-- ============ TEST 1 MINUTE ============ -->
+<div id="test" class="overlay" hidden>
+  <div class="overlay-bar">
+    <button class="btn ghost" id="test-close" type="button">← Retour</button>
+    <strong id="test-title"></strong>
+    <button class="btn ghost" id="test-fiche" type="button">📄 Fiche</button>
+  </div>
+  <div class="overlay-body test-body">
+    <div class="test-left">
+      <img id="test-img" alt="">
+      <div id="test-left-text" hidden></div>
+    </div>
+    <div class="test-right">
+      <div class="card center">
+        <div class="test-timer" id="test-timer">01:00</div>
+        <div class="two">
+          <button class="btn btn-go big" id="test-start" type="button">▶️ Départ</button>
+          <button class="btn big" id="test-reset" type="button">↺ Remettre à 1:00</button>
+        </div>
+        <p class="muted small" id="test-timer-hint">Un bip retentit à la fin de la minute.</p>
+      </div>
+      <div class="card">
+        <h2>Répétitions en 1 minute</h2>
+        <p class="muted small">Remplis seulement le ou les niveaux que tu as faits. L'observateur peut compter avec « +1 ».</p>
+        <div id="test-levels"></div>
+        <p class="muted small" id="test-best"></p>
+        <button class="btn small ghost" id="test-fix" type="button" hidden>✏️ Une erreur ? Corriger mes tests</button>
+        <button class="btn btn-go big full" id="test-save" type="button">💾 Enregistrer</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============ FICHE ============ -->
+<div id="fiche" class="overlay" hidden>
+  <div class="overlay-bar">
+    <button class="btn ghost" id="fiche-close" type="button">← Retour</button>
+    <strong id="fiche-title"></strong>
+    <button class="btn btn-go" id="fiche-test" type="button">⏱️ Tester</button>
+  </div>
+  <div class="overlay-body fiche-body">
+    <img id="fiche-img" alt="">
+    <div id="fiche-text"></div>
+  </div>
+</div>
+
+<!-- ============ SCANNER (récupérer mes résultats) ============ -->
+<div id="scan" class="overlay" hidden>
+  <div class="overlay-bar">
+    <button class="btn ghost" id="scan-close" type="button">← Retour</button>
+    <strong>📷 Scanner le QR de transfert</strong>
+    <span></span>
+  </div>
+  <div class="overlay-body scan-body">
+    <video id="scan-video" playsinline muted autoplay></video>
+    <p id="scan-msg" class="scan-msg"></p>
+  </div>
+</div>
+
+<!-- ============ QR PLEIN ÉCRAN ============ -->
+<div id="qr-full" class="qr-full" hidden>
+  <div class="qr-full-inner">
+    <div id="qr-full-code"></div>
+    <p id="qr-full-name"></p>
+    <p class="small">Monte la luminosité de l'écran si le scan ne passe pas.</p>
+    <button class="btn big" id="qr-full-close" type="button">✕ Fermer</button>
+  </div>
+</div>
+
+<!-- ============ DIALOGUE GÉNÉRIQUE ============ -->
+<dialog id="ask" class="dlg">
+  <form method="dialog" class="dlg-panel">
+    <h2 id="ask-title"></h2>
+    <p class="big-q" id="ask-text"></p>
+    <ul class="remind" id="ask-remind" hidden></ul>
+    <div class="two">
+      <button type="button" class="btn big" id="ask-no">Non</button>
+      <button type="button" class="btn big" id="ask-yes">Oui</button>
+    </div>
+    <p class="muted small center" id="ask-foot"></p>
+  </form>
+</dialog>
+
+<!-- ============ CARNET ============ -->
+<dialog id="carnet" class="dlg">
+  <form method="dialog" class="dlg-panel">
+    <h2>📒 Mon carnet de suivi</h2>
+    <p class="muted">Choisis selon la tablette utilisée.</p>
+    <button type="button" class="choice" id="carnet-open">
+      <strong>📱 J'ai ma tablette</strong>
+      <span>Mes résultats sont copiés, puis mon carnet s'ouvre : je les colle dans ma séance.</span>
+    </button>
+    <button type="button" class="choice" id="carnet-file">
+      <strong>💾 Je n'ai pas ma tablette</strong>
+      <span>J'enregistre un fichier à importer plus tard dans mon carnet (bouton « Importer »).</span>
+    </button>
+    <button type="button" class="choice" id="carnet-share">
+      <strong>📤 Envoyer le fichier</strong>
+      <span>AirDrop, Messages, mail… vers ma propre tablette.</span>
+    </button>
+    <details class="preview"><summary>Voir ce qui sera enregistré</summary><pre id="carnet-preview"></pre></details>
+    <button value="cancel" class="btn ghost full">Fermer</button>
+  </form>
+</dialog>
+
+<!-- ============ PROFIL ============ -->
+<dialog id="profile" class="dlg">
+  <form method="dialog" class="dlg-panel">
+    <h2>👤 Profil</h2>
+    <p class="muted" id="profile-who"></p>
+    <div id="profile-list" class="profile-list"></div>
+    <button type="button" class="choice" id="pr-edit"><strong>✏️ Corriger mon prénom, ma classe, mon observateur</strong><span>Rien n'est effacé.</span></button>
+    <button type="button" class="choice" id="pr-add"><strong>➕ Un autre élève utilise cette tablette</strong><span>Il a son propre profil : les résultats de chacun sont gardés.</span></button>
+    <button type="button" class="choice" id="pr-send"><strong>📤 Envoyer mes résultats vers ma tablette</strong><span>J'ai utilisé la tablette d'un camarade.</span></button>
+    <button type="button" class="choice" id="pr-get"><strong>📥 Récupérer mes résultats</strong><span>Faits sur une autre tablette : je scanne son QR ou j'ouvre le fichier.</span></button>
+    <button value="cancel" class="btn ghost full">Fermer</button>
+  </form>
+</dialog>
+
+<!-- ============ ENVOYER MES RÉSULTATS ============ -->
+<dialog id="xfer" class="dlg">
+  <form method="dialog" class="dlg-panel">
+    <h2>📤 Envoyer mes résultats</h2>
+    <ol class="help steps">
+      <li>Prends <b>ta</b> tablette et ouvre Cross Training.</li>
+      <li>👤 Profil → 📥 Récupérer mes résultats → 📷 Scanner.</li>
+      <li>Scanne ce QR code.</li>
+    </ol>
+    <div id="xfer-qr" class="qr-box xfer-qr"></div>
+    <p class="muted small center" id="xfer-info"></p>
+    <p class="muted small">Pas de caméra ? Envoie le fichier par AirDrop vers ta tablette, puis « Ouvrir le fichier ».</p>
+    <div class="two">
+      <button type="button" class="btn" id="xfer-share">📤 AirDrop / partager</button>
+      <button type="button" class="btn" id="xfer-file">💾 Fichier</button>
+    </div>
+    <button type="button" class="btn danger full" id="xfer-delete" hidden>🗑 C'est récupéré : supprimer mon profil d'ici</button>
+    <button value="cancel" class="btn ghost full">Fermer</button>
+  </form>
+</dialog>
+
+<!-- ============ RÉCUPÉRER MES RÉSULTATS ============ -->
+<dialog id="imp" class="dlg">
+  <form method="dialog" class="dlg-panel">
+    <h2>📥 Récupérer mes résultats</h2>
+    <p class="muted">Sur la tablette empruntée : 👤 Profil → 📤 Envoyer mes résultats. Puis ici :</p>
+    <button type="button" class="choice" id="imp-scan"><strong>📷 Scanner le QR code</strong><span>Avec la caméra de cette tablette.</span></button>
+    <button type="button" class="choice" id="imp-file"><strong>📂 Ouvrir le fichier</strong><span>Reçu par AirDrop ou enregistré dans Fichiers.</span></button>
+    <input type="file" id="imp-input" accept=".json,application/json,text/plain" hidden>
+    <p class="muted small">Rien n'est effacé : les résultats sont ajoutés.</p>
+    <button value="cancel" class="btn ghost full">Fermer</button>
+  </form>
+</dialog>
+
+<!-- ============ CORRIGER MES TESTS ============ -->
+<dialog id="tests-dlg" class="dlg">
+  <form method="dialog" class="dlg-panel">
+    <h2 id="tests-title"></h2>
+    <p class="muted small">Une faute de frappe ? Supprime le test faux, puis refais le test (ou réécris le bon nombre).</p>
+    <div id="tests-list" class="tests-list"></div>
+    <button value="cancel" class="btn ghost full">Fermer</button>
+  </form>
+</dialog>
+
+<!-- ============ GUIDE ÉLÈVE ============ -->
+<div id="guide" class="guide" hidden>
+  <div class="guide-top">
+    <span id="guide-count" class="guide-count"></span>
+    <strong>📖 Comment ça marche</strong>
+    <button class="btn small ghost" id="guide-close" type="button">Fermer ✕</button>
+  </div>
+  <div id="guide-card" class="guide-card"></div>
+  <div class="guide-nav">
+    <button class="btn big ghost" id="guide-prev" type="button">← Retour</button>
+    <div id="guide-dots" class="guide-dots"></div>
+    <button class="btn big" id="guide-next" type="button">Suivant →</button>
+  </div>
+</div>
+
+<div id="flash" class="flash" aria-hidden="true"></div>
+<div id="toast" class="toast" role="status" aria-live="polite"></div>
+
+<script src="lib/qrcode.js"></script>
+<script src="data.js"></script>
+<script src="app.js"></script>
+</body>
 </html>

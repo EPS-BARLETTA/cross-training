@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Fiches exercices | Carnet Cross Training</title>
+    <link rel="stylesheet" href="styles.css" />
+    <link rel="stylesheet" href="sheets.css" />
+  </head>
+  <body class="sheets-page">
+    <header class="sheets-hero">
+      <div>
+        <p class="eyebrow">Carnet Cross Training</p>
+        <h1>Fiches exercices</h1>
+        <p>
+          Retrouve les fiches pédagogiques conçues pour iPad&nbsp;: critères de réalisation, règles de sécurité, muscles
+          sollicités, étirements et niveaux progressifs.
+        </p>
+      </div>
+      <div class="hero-actions">
+        <a class="btn ghost" href="index.html">Retour à l’app</a>
+        <a class="btn primary" href="#sheets-anchor">Voir les fiches</a>
+      </div>
+    </header>
+
+    <main id="sheets-anchor" class="sheets-grid"></main>
+
+    <template id="sheet-template">
+      <article class="sheet-card">
+        <header class="sheet-head">
+          <h2></h2>
+          <p class="family-label"></p>
+        </header>
+        <section class="sheet-grid">
+          <div class="schema-block card-block">
+            <h3>Schéma</h3>
+            <img class="schema-img" alt="" />
+          </div>
+          <div class="criteria-block card-block">
+            <h3>Critères de réalisation</h3>
+            <ol class="bullet-list"></ol>
+          </div>
+          <div class="safety-block card-block">
+            <h3>Règles de sécurité</h3>
+            <ul class="bullet-list"></ul>
+          </div>
+          <div class="muscles-block card-block">
+            <h3>Muscles sollicités</h3>
+            <ul class="split-list"></ul>
+          </div>
+          <div class="stretches-block card-block">
+            <h3>Étirements</h3>
+            <ul class="bullet-list"></ul>
+          </div>
+        </section>
+        <section class="levels-block card-block">
+          <h3>Niveaux &amp; répétitions</h3>
+          <div class="levels-grid"></div>
+        </section>
+      </article>
+    </template>
+
+    <script src="sheets.js" type="module"></script>
+  </body>
+</html>

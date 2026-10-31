@@ -442,6 +442,8 @@
     var hashTab = (location.hash || "").replace("#", "");
     selectTab(PANELS[hashTab] ? hashTab : (state.run ? "skill" : state.tab || "train"));
     checkOldSeance();
+    // Guide : la première fois pour chaque élève (ou lien …#guide)
+    if (!state.run && (!state.guideSeen || hashTab === "guide")) setTimeout(openGuide, 0);
   }
 
   /* =========================================================
@@ -1476,7 +1478,6 @@
     } else { download(f); toast("Partage indisponible : fichier enregistré dans Téléchargements."); }
     closeDialog("carnet");
   });
-  $("btn-help").addEventListener("click", function () { openDialog("help"); });
 
   /* ---------- Nouvelle séance (2 questions) ---------- */
   function summary() {
@@ -1812,6 +1813,119 @@
     document.body.style.overflow = "";
   }
   $("scan-close").addEventListener("click", function () { if (!closeLayer("scan")) stopScan(); });
+
+  /* =========================================================
+   * GUIDE ÉLÈVE (après la saisie de l'identité + bouton ❓ Aide)
+   * ======================================================= */
+  function mk(cls, txt) { return '<span class="g-btn ' + cls + '">' + txt + "</span>"; }
+  function stepList(items) {
+    return '<ol class="g-steps">' + items.map(function (it, i) { return '<li><span class="g-num">' + (i + 1) + "</span><span>" + it + "</span></li>"; }).join("") + "</ol>";
+  }
+  var GUIDE = [
+    { ico: "👋", col: "#34d399", title: function () { return "Bienvenue " + (state.student ? esc(state.student.prenom) : "") + " !"; },
+      body: function () {
+        return '<p class="g-lead">Ici, on travaille <b>à deux</b> :</p>' +
+          '<div class="g-duo"><div class="g-person"><span>🏋️</span><b>Toi</b><small>tu fais les exercices</small></div>' +
+          '<div class="g-person"><span>👁</span><b>L\'observateur</b><small>il compte et écrit les nombres</small></div></div>' +
+          '<p class="g-note">Tout est enregistré tout seul sur la tablette. Les 5 onglets en haut :</p>' +
+          '<div class="g-tabs"><span>⏱️<br>Entraînement</span><span>🔥<br>Skill</span><span>📄<br>Fiches</span><span>📈<br>Historique</span><span>✅<br>Fin de séance</span></div>';
+      } },
+    { ico: "⏱️", col: "#fbbf24", title: function () { return "Entraînement : le test d'1 minute"; },
+      body: function () {
+        return stepList([
+          "Touche un exercice",
+          "Appuie sur " + mk("go", "▶️ Départ"),
+          "1 minute : le plus de répétitions possible !",
+          "L'observateur écrit le nombre " + '<span class="g-counter"><i>−</i><b>15</b><i class="p">+1</i></span>',
+          "Appuie sur " + mk("go", "💾 Enregistrer"),
+        ]) + '<p class="g-tip">📚 Chaque exercice testé entre dans <b>ton catalogue</b>. C\'est avec lui que tu construis ton Skill.</p>';
+      } },
+    { ico: "🔥", col: "#f43f5e", title: function () { return "Skill : ton circuit"; },
+      body: function () {
+        return '<p class="g-lead">Choisis <b>1 exercice par couleur</b> dans ton catalogue :</p>' +
+          '<div class="g-fams"><span class="c">❤️ Cardio</span><span class="h">💪 Haut du corps</span><span class="b">🦵 Bas du corps</span><span class="g">🧱 Gainage</span></div>' +
+          '<p class="g-lead">Puis son <b>niveau</b>, ton <b>objectif par bloc</b> et la <b>durée</b> → ' + mk("go", "▶️ Démarrer") + "</p>" +
+          '<div class="g-flow"><div class="w">🏃 TRAVAIL<small>fais les 4 exercices</small></div><b>→</b><div class="s">✋ J\'ai fini<small>touche le bouton</small></div><b>→</b><div class="r">😮‍💨 REPOS<small>jusqu\'à la fin des 2 min</small></div></div>' +
+          '<p class="g-tip">⏰ Chaque bloc dure <b>2 minutes</b>. Le bloc suivant démarre <b>tout seul</b>.</p>';
+      } },
+    { ico: "🚦", col: "#38bdf8", title: function () { return "Les signaux"; },
+      body: function () {
+        return '<div class="g-sig"><div class="go"><span></span><p><b>Écran VERT</b> + 2 bips<small>C\'est parti !</small></p></div>' +
+          '<div class="stop"><span></span><p><b>Écran ROUGE</b> + 1 bip<small>STOP ! On note les répétitions</small></p></div>' +
+          '<div class="end"><span></span><p><b>Écran VIOLET</b> + 3 bips<small>Séance terminée 🎉</small></p></div></div>' +
+          '<p class="g-tip">🔊 Monte le son. Si la tablette est en silencieux, regarde les couleurs.</p>';
+      } },
+    { ico: "✅", col: "#10b981", title: function () { return "Fin de séance : dans l'ordre"; },
+      body: function () {
+        return stepList([
+          "Montre ton QR code au prof : " + mk("go", "🔍 Afficher en grand"),
+          "Enregistre dans ton carnet : " + mk("carnet", "📒 Mon carnet"),
+          "Seulement après : " + mk("new", "🆕 Nouvelle séance"),
+        ]) + '<p class="g-warn">⚠️ « Nouvelle séance » vide la séance du jour. Fais d\'abord le 1 et le 2 !</p>' +
+          '<p class="g-tip">📈 Rien n\'est perdu : tes anciennes séances restent dans l\'Historique.</p>';
+      } },
+    { ico: "✏️", col: "#a78bfa", title: function () { return "Tu t'es trompé ? Pas de panique"; },
+      body: function () {
+        return '<div class="g-fix"><div><b>Un mauvais nombre dans un test</b>' + mk("", "✏️ Corriger mes tests") + "<small>puis 🗑 sur le test faux</small></div>" +
+          "<div><b>« J'ai fini » touché trop tôt</b>" + mk("undo", "↩️ Oups, pas fini ! Annuler") + "<small>tu as 6 secondes</small></div>" +
+          '<div><b>Une case <span class="g-red">rouge</span></b>' + mk("", "Fin de séance → écris le nombre") + "<small>le bloc n'a pas été noté à temps</small></div>" +
+          "<div><b>Ton prénom ou ta classe</b>" + mk("", "👤 Profil → ✏️ Corriger") + "<small>rien n'est effacé</small></div></div>";
+      } },
+    { ico: "🤝", col: "#38bdf8", title: function () { return "Tu n'as pas ta tablette ?"; },
+      body: function () {
+        return '<div class="g-two"><div class="g-tab"><p class="g-cap">Tablette d\'un camarade</p>' + stepList(["Choisis « 🤝 J'emprunte une tablette »", "Travaille normalement", "À la fin : " + mk("", "👤 Profil") + " → " + mk("", "📤 Envoyer mes résultats")]) + "</div>" +
+          '<div class="g-arrow"><i>➜</i><small>QR code<br>ou AirDrop</small></div>' +
+          '<div class="g-tab mine"><p class="g-cap">Ta tablette</p>' + stepList([mk("", "👤 Profil"), mk("", "📥 Récupérer mes résultats"), mk("", "📷 Scanner") + " le QR"]) + "</div></div>" +
+          '<p class="g-tip">Tes résultats s\'ajoutent à ton catalogue. Rien n\'est effacé.</p>';
+      } },
+    { ico: "🚀", col: "#34d399", title: function () { return "À toi de jouer !"; },
+      body: function () {
+        return '<div class="g-recap"><p>⏱️ <b>Teste</b> des exercices</p><p>🔥 <b>Construis</b> ton Skill</p><p>✅ <b>QR</b> au prof + <b>carnet</b></p></div>' +
+          '<p class="g-tip">📄 Les <b>Fiches</b> montrent comment bien faire chaque exercice, en sécurité.<br>❓ Tu peux revoir ce guide avec le bouton <b>Aide</b> en haut.</p>';
+      } },
+  ];
+  var guideIdx = 0;
+  function renderGuide() {
+    var g = GUIDE[guideIdx], last = guideIdx === GUIDE.length - 1;
+    $("guide-card").style.setProperty("--gcol", g.col);
+    $("guide-card").innerHTML = '<div class="g-wrap"><div class="g-ico">' + g.ico + '</div><h2 class="g-title">' + g.title() + '</h2><div class="g-body">' + g.body() + "</div></div>";
+    $("guide-dots").innerHTML = GUIDE.map(function (x, i) { return '<button type="button" data-gi="' + i + '" aria-label="Étape ' + (i + 1) + '"' + (i === guideIdx ? ' class="on"' : "") + "></button>"; }).join("");
+    $("guide-prev").style.visibility = guideIdx ? "visible" : "hidden";
+    $("guide-next").textContent = last ? "✅ J'ai compris !" : "Suivant →";
+    $("guide-next").className = "btn big " + (last ? "btn-go" : "g-nextbtn");
+    $("guide-count").textContent = (guideIdx + 1) + " / " + GUIDE.length;
+    $("guide-card").scrollTop = 0;
+  }
+  function openGuide() {
+    if ($("guide").hidden === false) return;
+    guideIdx = 0;
+    renderGuide();
+    $("guide").hidden = false;
+    document.body.style.overflow = "hidden";
+    openLayer("guide", hideGuide);
+  }
+  function hideGuide() {
+    $("guide").hidden = true;
+    document.body.style.overflow = "";
+    if (store.active && !state.guideSeen) { state.guideSeen = true; persist(); }
+  }
+  function closeGuide() { if (!closeLayer("guide")) hideGuide(); }
+  function guideGo(i) { guideIdx = Math.max(0, Math.min(GUIDE.length - 1, i)); renderGuide(); }
+  $("guide-next").addEventListener("click", function () { if (guideIdx === GUIDE.length - 1) closeGuide(); else guideGo(guideIdx + 1); });
+  $("guide-prev").addEventListener("click", function () { guideGo(guideIdx - 1); });
+  $("guide-close").addEventListener("click", closeGuide);
+  $("guide-dots").addEventListener("click", function (e) { var b = e.target.closest("[data-gi]"); if (b) guideGo(+b.dataset.gi); });
+  (function () { // glisser à gauche / à droite
+    var x0 = null, y0 = null;
+    $("guide-card").addEventListener("touchstart", function (e) { x0 = e.touches[0].clientX; y0 = e.touches[0].clientY; }, { passive: true });
+    $("guide-card").addEventListener("touchend", function (e) {
+      if (x0 == null) return;
+      var dx = e.changedTouches[0].clientX - x0, dy = e.changedTouches[0].clientY - y0;
+      x0 = null;
+      if (Math.abs(dx) > 60 && Math.abs(dx) > Math.abs(dy) * 1.5) guideGo(guideIdx + (dx < 0 ? 1 : -1));
+    }, { passive: true });
+  })();
+  $("btn-help").addEventListener("click", openGuide);
 
   /* =========================================================
    * Démarrage
