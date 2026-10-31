@@ -177,6 +177,7 @@
   <div class="overlay-body test-body">
     <div class="test-left">
       <img id="test-img" alt="">
+      <div id="test-left-text" hidden></div>
     </div>
     <div class="test-right">
       <div class="card center">
@@ -189,12 +190,8 @@
       </div>
       <div class="card">
         <h2>Répétitions en 1 minute</h2>
-        <label class="field" id="test-l1">N1
-          <input id="test-n1" type="number" inputmode="numeric" min="0" max="999">
-        </label>
-        <label class="field" id="test-l2">N2
-          <input id="test-n2" type="number" inputmode="numeric" min="0" max="999">
-        </label>
+        <p class="muted small">Remplis seulement le ou les niveaux que tu as faits.</p>
+        <div id="test-levels"></div>
         <p class="muted small" id="test-best"></p>
         <button class="btn btn-go big full" id="test-save" type="button">💾 Enregistrer</button>
       </div>

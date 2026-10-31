@@ -305,9 +305,14 @@
   function bestTxt(t) {
     if (!t) return "";
     var p = [];
-    if (t.n1 != null) p.push("N1 " + t.n1);
-    if (t.n2 != null) p.push("N2 " + t.n2);
+    [1, 2, 3].forEach(function (n) { if (t["n" + n] != null) p.push("N" + n + " " + t["n" + n]); });
     return p.join(" · ");
+  }
+  var FAM_ICON = { cardio: "❤️", haut: "💪", bas: "🦵", gainage: "🧱" };
+  function cover(e) {
+    if (e.image) return '<img src="' + e.image + '" alt="" loading="lazy">';
+    return '<span class="cover f-' + e.family + '"><span class="cover-ico">' + FAM_ICON[e.family] + '</span><span class="cover-name">' + esc(e.name) +
+      '</span><span class="cover-tag">Fiche texte</span></span>';
   }
   function renderGrid(which) {
     var list = EXERCISES.filter(function (e) { return filters[which] === "all" || e.family === filters[which]; });
@@ -319,9 +324,9 @@
         : "";
       return '<button type="button" class="ex-card f-' + e.family + '" data-ex="' + e.id + '">' +
         (which === "train" && t ? '<span class="done">✓ testé</span>' : "") +
-        '<img src="' + e.image + '" alt="" loading="lazy"><span class="body">' +
+        cover(e) + '<span class="body">' +
         '<span class="fam">' + esc(FAM[e.family].label) + '</span><span class="name">' + esc(e.name) + "</span>" +
-        '<span class="lv">N1 ' + esc(e.levels[0].label) + " · N2 " + esc(e.levels[1].label) + "</span>" + extra + "</span></button>";
+        '<span class="lv">' + e.levels.map(function (l) { return "N" + l.n + " " + esc(l.label); }).join(" · ") + "</span>" + extra + "</span></button>";
     }).join("");
   }
   $("train-grid").addEventListener("click", function (e) { var b = e.target.closest("[data-ex]"); if (b) openTest(b.dataset.ex); });
@@ -336,10 +341,15 @@
     test.id = id;
     resetTestTimer();
     $("test-title").textContent = e.name;
-    $("test-img").src = e.image;
-    $("test-l1").firstChild.textContent = "N1 · " + e.levels[0].label + " (repère : " + e.levels[0].expected + ")";
-    $("test-l2").firstChild.textContent = "N2 · " + e.levels[1].label + " (repère : " + e.levels[1].expected + ")";
-    $("test-n1").value = ""; $("test-n2").value = "";
+    if (e.image) { $("test-img").src = e.image; $("test-img").hidden = false; $("test-left-text").hidden = true; }
+    else {
+      $("test-img").hidden = true; $("test-left-text").hidden = false;
+      $("test-left-text").innerHTML = ficheHtml(e, true);
+    }
+    $("test-levels").innerHTML = e.levels.map(function (l) {
+      return '<label class="field">N' + l.n + " · " + esc(l.label) + ' <span class="muted small">(repère : ' + l.expected + ")</span>" +
+        '<input type="number" inputmode="numeric" min="0" max="999" data-testn="' + l.n + '"></label>';
+    }).join("");
     var t = state.seance.tests[id], r = state.records[id];
     $("test-best").textContent = [t ? "Aujourd'hui : " + bestTxt(t) : "", r && bestTxt(r) ? "Record : " + bestTxt(r) : ""].filter(Boolean).join(" · ");
     $("test").hidden = false;
@@ -366,7 +376,7 @@
       $("test-start").textContent = "▶️ Départ";
       $("test-timer-hint").textContent = "⏰ Temps écoulé ! Note les répétitions ci-dessous.";
       beep(880, 0.6, 1);
-      try { $("test-n1").focus(); } catch (e) {}
+      try { document.querySelector("[data-testn]").focus(); } catch (e) {}
       return;
     }
     el.textContent = mmss(left);
@@ -393,18 +403,27 @@
   });
   $("test-fiche").addEventListener("click", function () { openFiche(test.id); });
   $("test-save").addEventListener("click", function () {
-    var n1 = num($("test-n1").value), n2 = num($("test-n2").value);
-    if (n1 == null && n2 == null) { toast("Note au moins N1 ou N2.", true); return; }
-    if ((n1 != null && (n1 < 0 || n1 > 999)) || (n2 != null && (n2 < 0 || n2 > 999))) { toast("Nombre de répétitions invalide.", true); return; }
+    var vals = {}, any = false, bad = false;
+    document.querySelectorAll("[data-testn]").forEach(function (inp) {
+      var v = num(inp.value);
+      if (v != null) { any = true; if (v < 0 || v > 999) bad = true; vals[inp.dataset.testn] = v; }
+    });
+    if (!any) { toast("Note les répétitions d'au moins un niveau.", true); return; }
+    if (bad) { toast("Nombre de répétitions invalide.", true); return; }
     var id = test.id;
-    var t = state.seance.tests[id] || { n1: null, n2: null };
-    var r = state.records[id] || { n1: null, n2: null };
-    if (n1 != null) { t.n1 = t.n1 == null ? n1 : Math.max(t.n1, n1); r.n1 = r.n1 == null ? n1 : Math.max(r.n1, n1); }
-    if (n2 != null) { t.n2 = t.n2 == null ? n2 : Math.max(t.n2, n2); r.n2 = r.n2 == null ? n2 : Math.max(r.n2, n2); }
+    var t = state.seance.tests[id] || {};
+    var r = state.records[id] || {};
+    Object.keys(vals).forEach(function (n) {
+      var k = "n" + n, v = vals[n];
+      t[k] = t[k] == null ? v : Math.max(t[k], v);
+      r[k] = r[k] == null ? v : Math.max(r[k], v);
+    });
     t.at = new Date().toISOString();
     r.lastAt = t.at;
     r.tests = r.tests || [];
-    r.tests.push({ at: t.at, n1: n1, n2: n2 });
+    var entry = { at: t.at };
+    Object.keys(vals).forEach(function (n) { entry["n" + n] = vals[n]; });
+    r.tests.push(entry);
     if (r.tests.length > 30) r.tests = r.tests.slice(-30);
     state.seance.tests[id] = t;
     state.records[id] = r;
@@ -412,32 +431,45 @@
     closeTest();
     renderGrid("train");
     updateCounts();
-    toast("✅ " + EX[id].name + " : " + bestTxt({ n1: n1, n2: n2 }) + " enregistré");
+    var shown = {};
+    Object.keys(vals).forEach(function (n) { shown["n" + n] = vals[n]; });
+    toast("✅ " + EX[id].name + " : " + bestTxt(shown) + " enregistré");
   });
 
   /* =========================================================
    * FICHES
    * ======================================================= */
   var ficheId = null;
-  function openFiche(id) {
-    var e = EX[id], f = FICHES[id];
-    ficheId = id;
-    $("fiche-title").textContent = e.name;
-    $("fiche-img").src = e.image;
-    var h = "";
+  function ficheHtml(e, compact) {
+    var f = FICHES[e.id] || {};
     var sec = function (title, items, ordered) {
       if (!items || !items.length) return "";
       var tag = ordered ? "ol" : "ul";
       return '<div class="card fiche-sec"><h3>' + title + "</h3><" + tag + ">" + items.map(function (i) { return "<li>" + esc(i) + "</li>"; }).join("") + "</" + tag + "></div>";
     };
-    if (f) {
-      h += sec("✅ Critères de réalisation", f.criteria, true);
-      h += sec("⚠️ Sécurité", f.safety);
-      h += sec("💪 Muscles sollicités", f.muscles);
-      h += sec("🧘 Étirements", f.stretches);
+    var h = "";
+    if (!e.image) {
+      h += '<div class="fiche-banner f-' + e.family + '"><span>' + FAM_ICON[e.family] + " " + esc(FAM[e.family].label) + "</span><b>" + esc(e.name) + "</b>" +
+        (f.subtitle ? "<small>" + esc(f.subtitle) + "</small>" : "") + "</div>";
     }
-    h += sec("📈 Niveaux", e.levels.map(function (l) { return "N" + l.n + " · " + l.label + " — repère : " + l.expected + " rép."; }));
-    $("fiche-text").innerHTML = h;
+    h += sec("✅ Critères de réalisation", f.criteria, true);
+    h += sec("⚠️ Règles de sécurité", f.safety);
+    if (compact) return h;
+    h += sec("💪 Muscles sollicités", f.muscles);
+    h += sec("🧘 Étirements", f.stretches);
+    h += '<div class="card fiche-sec"><h3>📈 Niveaux et repères (1 minute)</h3><div class="lv-grid">' + e.levels.map(function (l) {
+      return '<div class="lv-card"><b>Niveau ' + l.n + " : " + esc(l.label) + '</b><span class="rep">Repère : ' + l.expected + " en 1 min</span>" +
+        (l.tips && l.tips.length ? "<ul>" + l.tips.map(function (x) { return "<li>" + esc(x) + "</li>"; }).join("") + "</ul>" : "") + "</div>";
+    }).join("") + "</div></div>";
+    return h;
+  }
+  function openFiche(id) {
+    var e = EX[id];
+    ficheId = id;
+    $("fiche-title").textContent = e.name;
+    $("fiche-img").hidden = !e.image;
+    if (e.image) $("fiche-img").src = e.image;
+    $("fiche-text").innerHTML = ficheHtml(e, false);
     $("fiche").hidden = false;
     $("fiche").querySelector(".overlay-body").scrollTop = 0;
     document.body.style.overflow = "hidden";
@@ -472,7 +504,7 @@
   function testedLevels(exId) {
     var r = state.records[exId];
     if (!r) return [];
-    return [1, 2].filter(function (n) { return r["n" + n] != null; });
+    return EX[exId].levels.map(function (l) { return l.n; }).filter(function (n) { return r["n" + n] != null; });
   }
   function catalogue(famId) {
     return EXERCISES.filter(function (e) { return e.family === famId && testedLevels(e.id).length; });
@@ -878,11 +910,11 @@
   function renderHistory() {
     var s = state.student;
     $("hist-name").textContent = s ? s.prenom + " " + s.nom + "." : "";
-    var ids = EXO_ORDER.filter(function (id) { var r = state.records[id]; return r && (r.n1 != null || r.n2 != null); });
+    var ids = EXO_ORDER.filter(function (id) { var r = state.records[id]; return r && EX[id] && (r.n1 != null || r.n2 != null || r.n3 != null); });
     if (!ids.length) {
       $("hist-catalogue").innerHTML = '<p class="muted">Aucun exercice testé pour l\'instant : va dans Entraînement.</p>';
     } else {
-      $("hist-catalogue").innerHTML = '<table class="cat-table"><tr><th></th><th>Exercice</th><th>N1</th><th>N2</th><th>Dernier test</th></tr>' +
+      $("hist-catalogue").innerHTML = '<table class="cat-table"><tr><th></th><th>Exercice</th><th>N1</th><th>N2</th><th>N3</th><th>Dernier test</th></tr>' +
         ids.map(function (id) {
           var r = state.records[id], e = EX[id];
           var prog = function (k) {
@@ -890,7 +922,10 @@
             return seq.length > 1 ? '<span class="prog">' + seq.slice(-5).join(" → ") + "</span>" : "";
           };
           return '<tr><td class="fam" style="background:var(--' + e.family + ')"></td><td>' + esc(e.name) + "</td>" +
-            "<td><b>" + (r.n1 != null ? r.n1 : "—") + "</b>" + prog("n1") + "</td><td><b>" + (r.n2 != null ? r.n2 : "—") + "</b>" + prog("n2") + "</td>" +
+            [1, 2, 3].map(function (n) {
+              if (!e.levels[n - 1]) return '<td class="muted">·</td>';
+              return "<td><b>" + (r["n" + n] != null ? r["n" + n] : "—") + "</b>" + prog("n" + n) + "</td>";
+            }).join("") +
             "<td class=\"muted\">" + (r.lastAt ? esc(shortDate(r.lastAt)) : "—") + "</td></tr>";
         }).join("") + "</table>";
     }
@@ -915,8 +950,7 @@
       EXO_ORDER.forEach(function (id) {
         var t = tests[id];
         if (!t || !code(id)) return;
-        if (t.n1 != null) p[code(id) + "_1"] = t.n1;
-        if (t.n2 != null) p[code(id) + "_2"] = t.n2;
+        [1, 2, 3].forEach(function (n) { if (t["n" + n] != null) p[code(id) + "_" + n] = t["n" + n]; });
       });
     }
     var sk = state.seance.skill;
@@ -1010,8 +1044,7 @@
       L.push("⏱️ ENTRAÎNEMENT — tests d'1 minute");
       ids.forEach(function (id) {
         var t = state.seance.tests[id], e = EX[id], p = [];
-        if (t.n1 != null) p.push("N1 (" + e.levels[0].label + ") : " + t.n1 + " rép.");
-        if (t.n2 != null) p.push("N2 (" + e.levels[1].label + ") : " + t.n2 + " rép.");
+        e.levels.forEach(function (l) { if (t["n" + l.n] != null) p.push("N" + l.n + " (" + l.label + ") : " + t["n" + l.n] + " rép."); });
         L.push("• " + e.name + " — " + p.join(" · "));
       });
     }
