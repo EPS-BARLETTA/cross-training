@@ -327,6 +327,7 @@
     renderIdMode();
   });
   function showIdentity(mode) {
+    $("screen-cover").hidden = true;
     idMode = mode;
     idSpaceOk = "";
     var has = profileList().length > 0;
@@ -432,6 +433,7 @@
 
   function showApp() {
     var s = state.student;
+    $("screen-cover").hidden = true;
     $("screen-id").hidden = true;
     $("screen-app").hidden = false;
     $("who-name").textContent = (isGuest() ? "🤝 " : "") + s.prenom + " " + s.nom + ".";
@@ -1928,6 +1930,55 @@
   $("btn-help").addEventListener("click", openGuide);
 
   /* =========================================================
+   * PAGE DE GARDE : affichée à chaque ouverture de l'appli
+   * ======================================================= */
+  var firstOpen = true;
+  function showCover() {
+    stopTestSilently();
+    ["profile", "xfer", "imp", "tests-dlg", "carnet", "ask"].forEach(function (id) { try { closeDialog(id); } catch (e) {} });
+    $("screen-app").hidden = true;
+    $("screen-id").hidden = true;
+    $("screen-cover").hidden = false;
+    var known = !!(store.active && state.student && state.student.prenom), s = state.student || {};
+    $("cover-hello").textContent = known ? "👋 Bonjour " + s.prenom + " " + s.nom + ". !" : "👋 Bienvenue !";
+    var info = "";
+    if (known) {
+      info = "Classe " + s.classe + (isGuest() ? " · 🤝 tablette empruntée" : "");
+      if (state.run) info = "🔥 Ta séance Skill est en cours.";
+    } else info = "Inscris-toi pour commencer : prénom, initiale du nom, classe.";
+    $("cover-info").textContent = info;
+    $("cover-go").textContent = !known ? "▶️ Commencer" : state.run ? "🔥 Reprendre ma séance Skill" : "▶️ Continuer";
+    $("cover-switch").hidden = !known;
+    window.scrollTo(0, 0);
+  }
+  $("cover-go").addEventListener("click", function () {
+    unlockAudio();
+    if (!(store.active && state.student && state.student.prenom)) { showIdentity("create"); return; }
+    if (firstOpen) {
+      firstOpen = false;
+      // à l'ouverture : 1er onglet (sauf séance Skill en cours ou lien direct …#fiches)
+      var h = (location.hash || "").replace("#", "");
+      if (!state.run && h !== "guide" && h !== "fiches") state.tab = "train";
+      if (h !== "guide" && h !== "fiches" && history.replaceState) history.replaceState(null, "", "#" + (state.run ? "skill" : state.tab));
+    }
+    showApp();
+  });
+  $("cover-switch").addEventListener("click", function () {
+    if (state.run) { toast("Une séance Skill est en cours : reprends-la et arrête-la d'abord.", true); return; }
+    renderProfileDlg();
+    openDialog("profile");
+  });
+  $("cover-help").addEventListener("click", openGuide);
+  // Tablette restée en veille longtemps (Safari ne recharge pas la page) : retour à la page de garde
+  var hiddenAt = 0;
+  document.addEventListener("visibilitychange", function () {
+    if (document.visibilityState === "hidden") { hiddenAt = Date.now(); return; }
+    if (hiddenAt && Date.now() - hiddenAt > 20 * 60 * 1000 && $("screen-cover").hidden) { firstOpen = true; showCover(); }
+    hiddenAt = 0;
+  });
+  window.addEventListener("pageshow", function (e) { if (e.persisted && $("screen-cover").hidden) { firstOpen = true; showCover(); } });
+
+  /* =========================================================
    * Démarrage
    * ======================================================= */
   function renderAll() {
@@ -1946,8 +1997,7 @@
   })();
   if (state.run) { advance(); if (state.run) keepAwake(true); }
   renderAll();
-  if (store.active && state.student && state.student.prenom) showApp();
-  else showIdentity("create");
+  showCover();
 
   if ("serviceWorker" in navigator && (location.protocol === "https:" || location.hostname === "localhost")) {
     var hadController = !!navigator.serviceWorker.controller, reloaded = false;
