@@ -1881,13 +1881,11 @@
           '<div class="g-tab mine"><p class="g-cap">Ta tablette</p>' + stepList([mk("", "👤 Profil"), mk("", "📥 Récupérer mes résultats"), mk("", "📷 Scanner") + " le QR"]) + "</div></div>" +
           '<p class="g-tip">Tes résultats s\'ajoutent à ton catalogue. Rien n\'est effacé.</p>';
       } },
-    { ico: "📲", col: "#fbbf24", title: function () { return "Protège tes résultats"; },
+    { ico: "💾", col: "#fbbf24", title: function () { return "Protège tes résultats"; },
       body: function () {
-        return '<p class="g-lead">Safari peut effacer tes résultats si tu ne viens pas pendant quelques jours (vacances…).</p>' +
-          '<div class="g-two"><div class="g-tab mine"><p class="g-cap">📲 Installe l\'appli</p>' + stepList(["Touche " + mk("", "⬆️ Partager") + " dans Safari", mk("", "➕ Sur l'écran d'accueil"), mk("go", "Ajouter") + " puis ouvre toujours l'appli avec l'icône 🏋️"]) + "</div>" +
-          '<div class="g-arrow"><i>+</i></div>' +
-          '<div class="g-tab mine"><p class="g-cap">💾 Sauvegarde</p>' + stepList([mk("", "👤 Profil"), mk("", "💾 Sauvegarder"), "« Enregistrer dans Fichiers »"]) + "</div></div>" +
-          '<p class="g-tip">Avant les vacances : <b>💾 Sauvegarder</b>. Si tout a disparu : à l\'inscription, touche <b>📂 J\'ai une sauvegarde</b>.</p>';
+        return '<p class="g-lead">La tablette peut effacer tes résultats si tu n\'ouvres pas l\'appli pendant quelques jours (vacances…).</p>' +
+          '<div class="g-tab mine" style="max-width:520px;margin:0 auto"><p class="g-cap">💾 Sauvegarde</p>' + stepList([mk("", "👤 Profil"), mk("", "💾 Sauvegarder"), "« Enregistrer dans Fichiers »"]) + "</div>" +
+          '<p class="g-tip">Un rappel jaune s\'affiche sur la page d\'accueil quand il faut sauvegarder.<br>Si tout a disparu : à l\'inscription, touche <b>📂 J\'ai une sauvegarde</b>.</p>';
       } },
     { ico: "🚀", col: "#34d399", title: function () { return "À toi de jouer !"; },
       body: function () {
@@ -1987,7 +1985,6 @@
   }
   function renderCoverExtras() {
     var known = !!(store.active && state.student && state.student.prenom);
-    $("cover-install").hidden = isInstalled();
     var nb = known && needsBackup();
     $("cover-backup").hidden = !nb;
     if (nb) {
