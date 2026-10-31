@@ -556,3 +556,12 @@ button, a, label, summary { touch-action: manipulation; }
 .pr-save .choice { margin: 0; }
 
 .ci-inapp { margin: 0 0 10px; padding: 8px 10px; border-radius: 12px; background: rgba(251,191,36,.12); font-size: .88rem; }
+
+details.cover-install { padding: 0; border-style: solid; border-width: 1px; }
+details.cover-install > summary { list-style: none; cursor: pointer; padding: 14px 16px; font-weight: 900; text-align: center; touch-action: manipulation; }
+details.cover-install > summary::-webkit-details-marker { display: none; }
+details.cover-install > summary::after { content: " ▾"; color: var(--muted); }
+details.cover-install[open] > summary::after { content: " ▴"; }
+details.cover-install > :not(summary) { margin-left: 16px; margin-right: 16px; }
+details.cover-install[open] { padding-bottom: 14px; }
+details.cover-install .ci-why { text-align: left; color: var(--text); }

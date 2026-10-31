@@ -1984,6 +1984,7 @@
     } else { download(f); markBackup(); toast("💾 Sauvegarde enregistrée dans Téléchargements (app Fichiers)."); }
   }
   function renderCoverExtras() {
+    $("cover-install").hidden = isInstalled();
     var known = !!(store.active && state.student && state.student.prenom);
     var nb = known && needsBackup();
     $("cover-backup").hidden = !nb;
