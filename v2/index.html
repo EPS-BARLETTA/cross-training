@@ -15,7 +15,12 @@
     <div class="brand-big">🏋️ Cross Training</div>
     <p class="muted center">EPS · Lycée Vauban</p>
     <form id="id-form" class="card" autocomplete="off">
-      <h1>Qui s'entraîne ?</h1>
+      <h1 id="id-title">Qui s'entraîne ?</h1>
+      <div class="seg seg-2 id-mode" id="id-mode">
+        <button type="button" data-guest="0">📱 C'est ma tablette</button>
+        <button type="button" data-guest="1">🤝 J'emprunte une tablette</button>
+      </div>
+      <p class="id-note" id="id-edit-note" hidden>Corrige l'orthographe, ta classe ou ton observateur : rien n'est effacé.<br>Un autre élève ? Ferme et utilise « ➕ Un autre élève ».</p>
       <div class="id-grid">
         <label class="field">Prénom de l'élève
           <input id="id-prenom" required autocapitalize="words" placeholder="Léa">
@@ -31,8 +36,9 @@
       <label class="field">Observateur <span class="muted small">(celui qui saisit les résultats)</span>
         <input id="id-observer" autocapitalize="words" placeholder="Prénom du camarade ou « Prof »">
       </label>
-      <button class="btn btn-go big full" type="submit">C'est parti →</button>
+      <button class="btn btn-go big full" id="id-submit" type="submit">C'est parti →</button>
       <button id="id-cancel" class="btn ghost full" type="button" hidden>Annuler</button>
+      <button id="id-import" class="btn ghost full small" type="button">📥 J'ai déjà des résultats sur une autre tablette</button>
     </form>
   </div>
 </section>
@@ -47,7 +53,7 @@
     </div>
     <div class="top-actions">
       <button class="btn small btn-new" id="btn-new-top" type="button">🆕 Nouvelle séance</button>
-      <button class="btn small ghost" id="btn-change-id" type="button">👤 Changer</button>
+      <button class="btn small ghost" id="btn-change-id" type="button">👤 Profil</button>
       <button class="btn small ghost" id="btn-help" type="button">❓ Aide</button>
     </div>
   </header>
@@ -61,6 +67,10 @@
   </nav>
 
   <main class="panels">
+    <div id="guest-banner" class="guest-banner" hidden>
+      <p>🤝 <b>Tablette empruntée.</b> À la fin du cours, envoie tes résultats vers <b>ta</b> tablette.</p>
+      <button class="btn small" id="guest-send" type="button">📤 Envoyer mes résultats</button>
+    </div>
     <div id="old-banner" class="old-banner" hidden>
       <p id="old-banner-text"></p>
       <div class="two">
@@ -107,7 +117,8 @@
           <div class="run-timer" id="run-timer">00:00</div>
           <div class="run-sub"><span id="run-block">Bloc 1/5</span> · <span id="run-sub"></span></div>
           <div class="run-bar"><i id="run-bar"></i></div>
-          <button class="btn big full" id="run-main" type="button">✋ Circuit terminé</button>
+          <button class="btn big full" id="run-main" type="button">✋ J'ai fini le circuit</button>
+          <button class="btn full run-undo" id="run-undo" type="button" hidden>↩️ Oups, pas fini ! Annuler</button>
           <p class="run-help" id="run-help"></p>
         </div>
         <div class="card">
@@ -158,6 +169,11 @@
         <p class="muted">Enregistre ta séance dans ton carnet d'entraînement.</p>
         <button class="btn btn-carnet big full" id="fin-carnet" type="button">📒 Enregistrer dans mon carnet</button>
       </div>
+      <div class="card" id="fin-xfer-card">
+        <h2>🤝 Tablette empruntée ?</h2>
+        <p class="muted">Envoie tes résultats vers ta tablette (QR code ou fichier).</p>
+        <button class="btn big full" id="fin-xfer" type="button">📤 Envoyer mes résultats vers ma tablette</button>
+      </div>
       <div class="card">
         <button class="btn btn-new big full" id="fin-new" type="button">🆕 Nouvelle séance</button>
         <p class="muted small center">À faire à la fin, après le scan du prof et l'enregistrement dans le carnet.</p>
@@ -190,9 +206,10 @@
       </div>
       <div class="card">
         <h2>Répétitions en 1 minute</h2>
-        <p class="muted small">Remplis seulement le ou les niveaux que tu as faits.</p>
+        <p class="muted small">Remplis seulement le ou les niveaux que tu as faits. L'observateur peut compter avec « +1 ».</p>
         <div id="test-levels"></div>
         <p class="muted small" id="test-best"></p>
+        <button class="btn small ghost" id="test-fix" type="button" hidden>✏️ Une erreur ? Corriger mes tests</button>
         <button class="btn btn-go big full" id="test-save" type="button">💾 Enregistrer</button>
       </div>
     </div>
@@ -209,6 +226,19 @@
   <div class="overlay-body fiche-body">
     <img id="fiche-img" alt="">
     <div id="fiche-text"></div>
+  </div>
+</div>
+
+<!-- ============ SCANNER (récupérer mes résultats) ============ -->
+<div id="scan" class="overlay" hidden>
+  <div class="overlay-bar">
+    <button class="btn ghost" id="scan-close" type="button">← Retour</button>
+    <strong>📷 Scanner le QR de transfert</strong>
+    <span></span>
+  </div>
+  <div class="overlay-body scan-body">
+    <video id="scan-video" playsinline muted autoplay></video>
+    <p id="scan-msg" class="scan-msg"></p>
   </div>
 </div>
 
@@ -258,21 +288,81 @@
   </form>
 </dialog>
 
+<!-- ============ PROFIL ============ -->
+<dialog id="profile" class="dlg">
+  <form method="dialog" class="dlg-panel">
+    <h2>👤 Profil</h2>
+    <p class="muted" id="profile-who"></p>
+    <div id="profile-list" class="profile-list"></div>
+    <button type="button" class="choice" id="pr-edit"><strong>✏️ Corriger mon prénom, ma classe, mon observateur</strong><span>Rien n'est effacé.</span></button>
+    <button type="button" class="choice" id="pr-add"><strong>➕ Un autre élève utilise cette tablette</strong><span>Il a son propre profil : les résultats de chacun sont gardés.</span></button>
+    <button type="button" class="choice" id="pr-send"><strong>📤 Envoyer mes résultats vers ma tablette</strong><span>J'ai utilisé la tablette d'un camarade.</span></button>
+    <button type="button" class="choice" id="pr-get"><strong>📥 Récupérer mes résultats</strong><span>Faits sur une autre tablette : je scanne son QR ou j'ouvre le fichier.</span></button>
+    <button value="cancel" class="btn ghost full">Fermer</button>
+  </form>
+</dialog>
+
+<!-- ============ ENVOYER MES RÉSULTATS ============ -->
+<dialog id="xfer" class="dlg">
+  <form method="dialog" class="dlg-panel">
+    <h2>📤 Envoyer mes résultats</h2>
+    <ol class="help steps">
+      <li>Prends <b>ta</b> tablette et ouvre Cross Training.</li>
+      <li>👤 Profil → 📥 Récupérer mes résultats → 📷 Scanner.</li>
+      <li>Scanne ce QR code.</li>
+    </ol>
+    <div id="xfer-qr" class="qr-box xfer-qr"></div>
+    <p class="muted small center" id="xfer-info"></p>
+    <p class="muted small">Pas de caméra ? Envoie le fichier par AirDrop vers ta tablette, puis « Ouvrir le fichier ».</p>
+    <div class="two">
+      <button type="button" class="btn" id="xfer-share">📤 AirDrop / partager</button>
+      <button type="button" class="btn" id="xfer-file">💾 Fichier</button>
+    </div>
+    <button type="button" class="btn danger full" id="xfer-delete" hidden>🗑 C'est récupéré : supprimer mon profil d'ici</button>
+    <button value="cancel" class="btn ghost full">Fermer</button>
+  </form>
+</dialog>
+
+<!-- ============ RÉCUPÉRER MES RÉSULTATS ============ -->
+<dialog id="imp" class="dlg">
+  <form method="dialog" class="dlg-panel">
+    <h2>📥 Récupérer mes résultats</h2>
+    <p class="muted">Sur la tablette empruntée : 👤 Profil → 📤 Envoyer mes résultats. Puis ici :</p>
+    <button type="button" class="choice" id="imp-scan"><strong>📷 Scanner le QR code</strong><span>Avec la caméra de cette tablette.</span></button>
+    <button type="button" class="choice" id="imp-file"><strong>📂 Ouvrir le fichier</strong><span>Reçu par AirDrop ou enregistré dans Fichiers.</span></button>
+    <input type="file" id="imp-input" accept=".json,application/json,text/plain" hidden>
+    <p class="muted small">Rien n'est effacé : les résultats sont ajoutés.</p>
+    <button value="cancel" class="btn ghost full">Fermer</button>
+  </form>
+</dialog>
+
+<!-- ============ CORRIGER MES TESTS ============ -->
+<dialog id="tests-dlg" class="dlg">
+  <form method="dialog" class="dlg-panel">
+    <h2 id="tests-title"></h2>
+    <p class="muted small">Une faute de frappe ? Supprime le test faux, puis refais le test (ou réécris le bon nombre).</p>
+    <div id="tests-list" class="tests-list"></div>
+    <button value="cancel" class="btn ghost full">Fermer</button>
+  </form>
+</dialog>
+
 <!-- ============ AIDE ============ -->
 <dialog id="help" class="dlg">
   <form method="dialog" class="dlg-panel">
     <h2>❓ Comment ça marche</h2>
     <ol class="help">
-      <li><strong>⏱️ Entraînement</strong> : touche un exercice → Départ → 1 minute → note les répétitions (N1 et/ou N2) → Enregistrer.</li>
-      <li><strong>🔥 Skill</strong> : avec ton catalogue (exercices testés), choisis 1 exercice par famille, son niveau, l'objectif par bloc et la durée → Démarrer. Pendant chaque bloc de 2 min : fais le circuit, touche « Circuit terminé », puis l'observateur note les répétitions pendant la récupération. Le bloc suivant démarre tout seul.</li>
+      <li><strong>⏱️ Entraînement</strong> : touche un exercice → Départ → 1 minute → note les répétitions → Enregistrer. Une erreur ? « ✏️ Corriger mes tests ».</li>
+      <li><strong>🔥 Skill</strong> : avec ton catalogue (exercices testés), choisis 1 exercice par famille, son niveau, l'objectif par bloc et la durée → Démarrer. Pendant chaque bloc de 2 min : fais le circuit, touche « J'ai fini le circuit » (« Annuler » si c'était une erreur), puis repos. L'observateur compte avec « +1 ». Le bloc suivant démarre tout seul.</li>
       <li><strong>📄 Fiches</strong> : critères de réalisation, sécurité, muscles, étirements.</li>
       <li><strong>✅ Fin de séance</strong> : montre le QR au prof, puis enregistre dans ton carnet.</li>
+      <li><strong>👤 Profil</strong> : corriger ton prénom, ajouter un autre élève, ou envoyer / récupérer tes résultats si tu as utilisé la tablette d'un camarade.</li>
     </ol>
     <p class="muted small">Tout est enregistré automatiquement. Même si la page se recharge pendant un bloc, la séance reprend où elle en était.</p>
     <button value="cancel" class="btn btn-go full">J'ai compris</button>
   </form>
 </dialog>
 
+<div id="flash" class="flash" aria-hidden="true"></div>
 <div id="toast" class="toast" role="status" aria-live="polite"></div>
 
 <script src="lib/qrcode.js"></script>

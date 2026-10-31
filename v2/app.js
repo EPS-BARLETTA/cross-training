@@ -14,10 +14,10 @@
   var FAM = {};
   FAMILIES.forEach(function (f) { FAM[f.id] = f; });
 
-  var KEY = "CT2_STATE";
+  var KEY = "CT2_STATE", PKEY = "CT2_PROFILES";
   var OLD_KEY = "CT_APP_STATE_V3";
   var CARNET_URL = "https://carnetentrainementv2.vercel.app/";
-  var BLOCK = 120, SAS = 10, TEST = 60, TOL = 0.2;
+  var BLOCK = 120, SAS = 20, TEST = 60, TOL = 0.2;
   var DURATIONS = [6, 10, 16, 20];
 
   /* =========================================================
@@ -109,8 +109,9 @@
   });
 
   // Question Oui / Non (option : 2e confirmation)
-  var askCb = null;
+  var askCb = null, askNoCb = null;
   function ask(opts, onYes) {
+    askNoCb = opts.onNo || null;
     $("ask-title").textContent = opts.title || "";
     $("ask-text").textContent = opts.text || "";
     $("ask-foot").textContent = opts.foot || "";
@@ -123,8 +124,57 @@
     askCb = onYes;
     openDialog("ask");
   }
-  $("ask-no").addEventListener("click", function () { askCb = null; closeDialog("ask"); });
-  $("ask-yes").addEventListener("click", function () { var cb = askCb; askCb = null; closeDialog("ask"); if (cb) cb(); });
+  $("ask-no").addEventListener("click", function () { var cb = askNoCb; askCb = null; askNoCb = null; closeDialog("ask"); if (cb) cb(); });
+  $("ask-yes").addEventListener("click", function () { var cb = askCb; askCb = null; askNoCb = null; closeDialog("ask"); if (cb) cb(); });
+  // enchaîner une 2e question juste après la 1re
+  function askNext(opts, onYes) { setTimeout(function () { ask(opts, onYes); }, 40); }
+
+  /* ---------- Couches (test, fiche, QR…) : le bouton « retour » de Safari ferme la couche au lieu de quitter l'appli ---------- */
+  var layers = [], ignorePops = 0;
+  function openLayer(name, closeFn, guard) {
+    layers.push({ name: name, close: closeFn, guard: guard });
+    try { history.pushState({ ctl: layers.length }, ""); } catch (e) {}
+  }
+  function closeLayer(name) {
+    for (var i = layers.length - 1; i >= 0; i--) {
+      if (layers[i].name !== name) continue;
+      var l = layers.splice(i, 1)[0];
+      l.close();
+      ignorePops++;
+      try { history.back(); } catch (e) { ignorePops--; }
+      return true;
+    }
+    return false;
+  }
+  window.addEventListener("popstate", function () {
+    if (ignorePops > 0) { ignorePops--; return; }
+    var top = layers[layers.length - 1];
+    if (!top) return;
+    if (top.guard && top.guard()) { try { history.pushState({ ctl: layers.length }, ""); } catch (e) {} return; }
+    layers.pop();
+    top.close();
+  });
+
+  /* ---------- Nombres entiers seulement (pas de virgule, 3 chiffres max) ---------- */
+  document.addEventListener("input", function (e) {
+    var t = e.target;
+    if (!t || !t.hasAttribute || !t.hasAttribute("data-int")) return;
+    var v = t.value.replace(/[^0-9]/g, "").slice(0, 3).replace(/^0+(?=\d)/, "");
+    if (v !== t.value) t.value = v;
+  }, true);
+  function intVal(v) {
+    v = String(v == null ? "" : v).trim();
+    return /^\d{1,3}$/.test(v) ? parseInt(v, 10) : null;
+  }
+
+  /* ---------- Flash plein écran (iPad en silencieux = pas de bip) ---------- */
+  function flash(kind) {
+    var f = $("flash");
+    if (!f) return;
+    f.className = "flash";
+    void f.offsetWidth;
+    f.className = "flash on " + kind;
+  }
 
   /* =========================================================
    * Classe : « 4ème C » → 4C, « Terminale B » → TB, « 2nde A » → 2A
@@ -158,9 +208,29 @@
     FAMILIES.forEach(function (f) { c.selection[f.id] = ""; c.levels[f.id] = 1; c.objectives[f.id] = ""; });
     return c;
   }
-  var state = load(KEY);
-  if (!state || typeof state !== "object" || !state.seance) {
-    state = { v: 1, student: null, seance: newSeance(), records: {}, cfg: emptyCfg(), run: null };
+  function blankState() { return { v: 1, student: null, seance: newSeance(), records: {}, cfg: emptyCfg(), run: null, history: [], imported: [] }; }
+  // Mise à niveau d'un profil : chaque meilleur score correspond à un test (pour pouvoir corriger / supprimer)
+  function fixState(s) {
+    s.records = s.records || {}; s.cfg = s.cfg || emptyCfg(); s.seance = s.seance || newSeance();
+    s.seance.tests = s.seance.tests || {}; s.history = s.history || []; s.imported = s.imported || [];
+    Object.keys(s.records).forEach(function (id) {
+      var r = s.records[id];
+      if (!EX[id] || !r) { delete s.records[id]; return; }
+      r.tests = r.tests || [];
+      r.tests.forEach(function (t) { if (!t.sid && !t.old && t.at && t.at >= s.seance.startedAt) t.sid = s.seance.id; });
+      var e = { at: r.lastAt || s.seance.startedAt, old: true }, need = false;
+      [1, 2, 3].forEach(function (n) {
+        var k = "n" + n;
+        if (r[k] != null && !r.tests.some(function (t) { return t[k] != null && t[k] >= r[k]; })) { e[k] = r[k]; need = true; }
+      });
+      if (need) r.tests.unshift(e);
+    });
+    return s;
+  }
+  function legacyState() {
+    var state = load(KEY);
+    if (state && typeof state === "object" && state.seance) return state;
+    state = blankState();
     // Reprise de l'ancienne version (identité, configuration Skill, records)
     var old = load(OLD_KEY);
     if (old && typeof old === "object") {
@@ -184,15 +254,51 @@
         });
       }
     }
+    return state;
   }
-  state.records = state.records || {};
-  state.cfg = state.cfg || emptyCfg();
-  state.seance.tests = state.seance.tests || {};
 
+  /* ---------- Profils : le propriétaire de la tablette + des invités (jamais d'effacement) ---------- */
+  var store = load(PKEY);
+  if (!store || typeof store !== "object" || !store.profiles) {
+    store = { v: 1, active: null, profiles: {} };
+    var leg = legacyState();
+    if (leg.student && leg.student.prenom) {
+      var pid0 = uid();
+      store.profiles[pid0] = { guest: false, createdAt: new Date().toISOString(), state: fixState(leg) };
+      store.active = pid0;
+    }
+  }
+  Object.keys(store.profiles).forEach(function (pid) { fixState(store.profiles[pid].state); });
+  if (!store.profiles[store.active]) store.active = null;
+  var state = store.active ? store.profiles[store.active].state : blankState();
+
+  function persist() {
+    if (!store.active) return true;
+    store.profiles[store.active].state = state;
+    try { localStorage.setItem(PKEY, JSON.stringify(store)); return true; }
+    catch (e) { toast("⚠️ Mémoire pleine : impossible d'enregistrer.", true); return false; }
+  }
   function save() {
     state.seance.updatedAt = new Date().toISOString();
-    try { localStorage.setItem(KEY, JSON.stringify(state)); return true; }
-    catch (e) { toast("⚠️ Mémoire pleine : impossible d'enregistrer.", true); return false; }
+    return persist();
+  }
+  function profileList() {
+    return Object.keys(store.profiles).map(function (pid) { var p = store.profiles[pid]; return { pid: pid, guest: p.guest, s: p.state.student || {}, st: p.state }; })
+      .sort(function (a, b) { return (a.guest - b.guest) || String(a.s.prenom).localeCompare(String(b.s.prenom)); });
+  }
+  function isGuest() { return !!(store.active && store.profiles[store.active].guest); }
+  function idKey(prenom, nom) { return String(prenom || "").normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().replace(/[^a-z]/g, "") + "|" + initial(nom); }
+  function findProfile(prenom, nom) {
+    var k = idKey(prenom, nom);
+    return profileList().filter(function (p) { return idKey(p.s.prenom, p.s.nom) === k; })[0] || null;
+  }
+  function switchProfile(pid) {
+    stopTestSilently();
+    store.active = pid;
+    state = store.profiles[pid].state;
+    persist();
+    renderAll();
+    showApp();
   }
   function seanceEmpty() { return !Object.keys(state.seance.tests).length && !state.seance.skill && !state.run; }
 
@@ -206,54 +312,133 @@
   $("id-classe").addEventListener("input", updateClassePreview);
   $("id-nom").addEventListener("input", function () { this.value = initial(this.value); });
 
-  function showIdentity(canCancel) {
+  // « lea » → « Lea », « jean-marc » → « Jean-Marc »
+  function cleanPrenom(v) {
+    return String(v || "").trim().replace(/\s+/g, " ").toLowerCase().replace(/(^|[\s\-'])(\S)/g, function (m, a, b) { return a + b.toUpperCase(); });
+  }
+  var idMode = "create", idGuest = false, idSpaceOk = "";
+  function renderIdMode() {
+    document.querySelectorAll("#id-mode [data-guest]").forEach(function (b) { b.setAttribute("aria-pressed", String((b.dataset.guest === "1") === idGuest)); });
+  }
+  $("id-mode").addEventListener("click", function (e) {
+    var b = e.target.closest("[data-guest]");
+    if (!b) return;
+    idGuest = b.dataset.guest === "1";
+    renderIdMode();
+  });
+  function showIdentity(mode) {
+    idMode = mode;
+    idSpaceOk = "";
+    var has = profileList().length > 0;
     $("screen-app").hidden = true;
     $("screen-id").hidden = false;
-    $("id-cancel").hidden = !canCancel;
-    var s = state.student;
-    if (s) {
-      $("id-prenom").value = s.prenom || "";
-      $("id-nom").value = s.nom || "";
-      $("id-classe").value = s.classeSaisie || s.classe || "";
-      $("id-observer").value = s.observer || "";
-    }
+    $("id-cancel").hidden = !store.active;
+    $("id-title").textContent = mode === "edit" ? "✏️ Corriger mes infos" : has ? "➕ Un autre élève" : "Qui s'entraîne ?";
+    $("id-mode").hidden = mode === "edit";
+    $("id-edit-note").hidden = mode !== "edit";
+    $("id-import").hidden = mode === "edit";
+    $("id-submit").textContent = mode === "edit" ? "✅ Enregistrer" : "C'est parti →";
+    idGuest = has;
+    renderIdMode();
+    var s = mode === "edit" ? state.student || {} : {};
+    $("id-prenom").value = s.prenom || "";
+    $("id-nom").value = s.nom || "";
+    $("id-classe").value = s.classeSaisie || s.classe || "";
+    $("id-observer").value = s.observer || "";
     updateClassePreview();
+    window.scrollTo(0, 0);
   }
-  $("id-cancel").addEventListener("click", function () { if (state.student) showApp(); });
-  $("btn-change-id").addEventListener("click", function () { showIdentity(true); });
+  $("id-cancel").addEventListener("click", function () { if (store.active) showApp(); });
 
   $("id-form").addEventListener("submit", function (e) {
     e.preventDefault();
-    var prenom = $("id-prenom").value.trim(), nom = initial($("id-nom").value);
+    var prenom = cleanPrenom($("id-prenom").value), nom = initial($("id-nom").value);
     var classeSaisie = $("id-classe").value.trim(), classe = normalizeClasse(classeSaisie);
     var observer = $("id-observer").value.trim();
-    if (!prenom || !nom || !classe) { toast("Prénom, initiale et classe sont obligatoires.", true); return; }
-    var s = state.student;
-    var changed = s && (s.prenom.toLowerCase() !== prenom.toLowerCase() || s.nom !== nom);
-    var apply = function (reset) {
-      if (reset) { stopRunSilently(); state.seance = newSeance(); state.records = {}; state.cfg = emptyCfg(); state.history = []; }
-      state.student = { prenom: prenom, nom: nom, classe: classe, classeSaisie: classeSaisie, observer: observer };
+    if (!prenom || !nom || !classe) { toast("Prénom, initiale du nom et classe sont obligatoires.", true); return; }
+    $("id-prenom").value = prenom;
+    // « lea dupont » tapé dans Prénom : on vérifie
+    if (/\s/.test(prenom) && idSpaceOk !== prenom) {
+      ask({ title: "✋ Vérifie ton prénom", text: "« " + prenom + " » : c'est seulement ton prénom ?", foot: "Ton nom de famille ne va pas ici : on garde juste son initiale (case « Initiale du nom »).",
+        no: "Non, je corrige", yes: "Oui, c'est mon prénom", onNo: function () { $("id-prenom").focus(); } }, function () { idSpaceOk = prenom; $("id-form").requestSubmit ? $("id-form").requestSubmit() : $("id-submit").click(); });
+      return;
+    }
+    var student = { prenom: prenom, nom: nom, classe: classe, classeSaisie: classeSaisie, observer: observer };
+    var other = findProfile(prenom, nom);
+    if (idMode === "edit") {
+      if (other && other.pid !== store.active) {
+        ask({ title: "👤 Ce profil existe déjà", text: prenom + " " + nom + ". a déjà un profil sur cette tablette. Aller sur ce profil ?", foot: "Si tu es un autre élève, utilise plutôt « ➕ Un autre élève ».", yes: "Oui, y aller" },
+          function () { switchProfile(other.pid); });
+        return;
+      }
+      state.student = student;
       save();
       renderAll();
       showApp();
-    };
-    var hasData = !seanceEmpty() || Object.keys(state.records).length;
-    if (changed && hasData) {
-      ask({ title: "👤 Autre élève", text: "Cette tablette contient la séance, le catalogue et l'historique de " + s.prenom + " " + s.nom + ". Passer à " + prenom + " " + nom + ". ?",
-        foot: "La séance, le catalogue et l'historique de " + s.prenom + " seront effacés de cette tablette (fais scanner son QR avant).", yes: "Oui, changer d'élève", danger: true }, function () { apply(true); });
+      toast("✏️ Infos corrigées (rien n'a été effacé)");
       return;
     }
-    if (changed) { apply(true); return; }
-    apply(false);
+    if (other) {
+      other.st.student.classe = classe; other.st.student.classeSaisie = classeSaisie; other.st.student.observer = observer;
+      switchProfile(other.pid);
+      toast("👋 Re-bonjour " + prenom + " : tes résultats sont là !");
+      return;
+    }
+    var pid = uid();
+    var ns = blankState();
+    ns.student = student;
+    store.profiles[pid] = { guest: idGuest, createdAt: new Date().toISOString(), state: ns };
+    switchProfile(pid);
+    if (idGuest) toast("🤝 Profil invité créé pour " + prenom);
   });
+
+  /* ---------- Fenêtre Profil ---------- */
+  function renderProfileDlg() {
+    var list = profileList();
+    $("profile-list").innerHTML = list.length < 2 ? "" : '<p class="lbl">Élèves sur cette tablette</p>' + list.map(function (p) {
+      var act = p.pid === store.active;
+      return '<div class="pr-row' + (act ? " active" : "") + '"><button type="button" class="pr-go" data-prgo="' + p.pid + '"' + (act ? " disabled" : "") + ">" +
+        "<b>" + esc(p.s.prenom + " " + p.s.nom + ".") + "</b> <span class=\"badge\">" + esc(p.s.classe) + "</span> " +
+        (p.guest ? '<span class="tag-guest">🤝 invité</span>' : '<span class="tag-owner">📱 tablette</span>') + (act ? ' <span class="muted small">← c\'est moi</span>' : "") + "</button>" +
+        (!act && p.guest ? '<button type="button" class="pr-del" data-prdel="' + p.pid + '" aria-label="Supprimer">🗑</button>' : "") + "</div>";
+    }).join("");
+    var s = state.student;
+    $("profile-who").textContent = s.prenom + " " + s.nom + ". · " + s.classe + (isGuest() ? " · 🤝 invité sur cette tablette" : "");
+  }
+  $("btn-change-id").addEventListener("click", function () {
+    if (state.run) { toast("Une séance Skill est en cours : arrête-la d'abord (⏹ en bas de l'onglet Skill).", true); return; }
+    renderProfileDlg();
+    openDialog("profile");
+  });
+  $("profile-list").addEventListener("click", function (e) {
+    var go = e.target.closest("[data-prgo]"), del = e.target.closest("[data-prdel]");
+    if (go) { closeDialog("profile"); switchProfile(go.dataset.prgo); toast("👤 Profil de " + state.student.prenom); return; }
+    if (del) {
+      var p = store.profiles[del.dataset.prdel], s = p.state.student;
+      closeDialog("profile");
+      ask({ title: "🗑 Supprimer " + s.prenom + " " + s.nom + ". ?", text: "Ses résultats seront effacés de cette tablette.", foot: "Vérifie d'abord qu'il les a envoyés vers sa tablette (📤 Envoyer mes résultats).",
+        no: "Non", yes: "Oui, supprimer", danger: true }, function () {
+        delete store.profiles[del.dataset.prdel];
+        persist();
+        toast("🗑 Profil supprimé");
+      });
+    }
+  });
+  $("pr-edit").addEventListener("click", function () { closeDialog("profile"); showIdentity("edit"); });
+  $("pr-add").addEventListener("click", function () { closeDialog("profile"); showIdentity("create"); });
+  $("pr-send").addEventListener("click", function () { closeDialog("profile"); openXfer(); });
+  $("pr-get").addEventListener("click", function () { closeDialog("profile"); openDialog("imp"); });
+  $("id-import").addEventListener("click", function () { openDialog("imp"); });
 
   function showApp() {
     var s = state.student;
     $("screen-id").hidden = true;
     $("screen-app").hidden = false;
-    $("who-name").textContent = s.prenom + " " + s.nom + ".";
+    $("who-name").textContent = (isGuest() ? "🤝 " : "") + s.prenom + " " + s.nom + ".";
     $("who-classe").textContent = s.classe;
     $("who-obs").textContent = s.observer ? "👁 Observateur : " + s.observer : "";
+    $("guest-banner").hidden = !isGuest();
+    $("fin-xfer-card").classList.toggle("hl", isGuest());
     var hashTab = (location.hash || "").replace("#", "");
     selectTab(PANELS[hashTab] ? hashTab : (state.run ? "skill" : state.tab || "train"));
     checkOldSeance();
@@ -272,7 +457,7 @@
     if (tab === "fin") renderFin();
     if (tab === "hist") renderHistory();
     if (tab === "skill") renderSkill();
-    try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) {}
+    persist();
     window.scrollTo(0, 0);
   }
   document.querySelectorAll(".tab").forEach(function (b) { b.addEventListener("click", function () { selectTab(b.dataset.tab); }); });
@@ -347,25 +532,41 @@
       $("test-left-text").innerHTML = ficheHtml(e, true);
     }
     $("test-levels").innerHTML = e.levels.map(function (l) {
-      return '<label class="field">N' + l.n + " · " + esc(l.label) + ' <span class="muted small">(repère : ' + l.expected + ")</span>" +
-        '<input type="number" inputmode="numeric" min="0" max="999" data-testn="' + l.n + '"></label>';
+      return '<div class="tl-row"><div class="tl-lbl">N' + l.n + " · " + esc(l.label) + ' <span class="muted small">(repère : ' + l.expected + ")</span></div>" +
+        '<div class="counter"><button type="button" data-tcnt="-1" data-for="' + l.n + '" aria-label="moins 1">−</button>' +
+        '<input type="text" inputmode="numeric" pattern="[0-9]*" maxlength="3" autocomplete="off" placeholder="—" data-int data-testn="' + l.n + '">' +
+        '<button type="button" data-tcnt="1" data-for="' + l.n + '" aria-label="plus 1">+1</button></div></div>';
     }).join("");
-    var t = state.seance.tests[id], r = state.records[id];
-    $("test-best").textContent = [t ? "Aujourd'hui : " + bestTxt(t) : "", r && bestTxt(r) ? "Record : " + bestTxt(r) : ""].filter(Boolean).join(" · ");
+    renderTestBest();
     $("test").hidden = false;
     document.body.style.overflow = "hidden";
+    openLayer("test", hideTest, function () {
+      if (!test.raf) return false;
+      ask({ title: "⏱️ Chrono en cours", text: "Quitter le test ? Le chrono sera arrêté.", no: "Non, je reste", yes: "Oui, quitter" }, function () { closeLayer("test"); });
+      return true;
+    });
   }
-  function closeTest() {
-    cancelAnimationFrame(test.raf); test.raf = null;
+  function renderTestBest() {
+    var id = test.id, t = state.seance.tests[id], r = state.records[id];
+    $("test-best").textContent = [t ? "Aujourd'hui : " + bestTxt(t) : "", r && bestTxt(r) ? "Record : " + bestTxt(r) : ""].filter(Boolean).join(" · ");
+    $("test-fix").hidden = !(r && r.tests && r.tests.length);
+  }
+  function hideTest() {
+    cancelAnimationFrame(test.raf); test.raf = null; test.endAt = 0;
     $("test").hidden = true;
-    document.body.style.overflow = "";
+    if ($("fiche").hidden) document.body.style.overflow = "";
+  }
+  function closeTest() { if (!closeLayer("test")) hideTest(); }
+  function stopTestSilently() {
+    layers.slice().reverse().forEach(function (l) { closeLayer(l.name); });
   }
   function resetTestTimer() {
     cancelAnimationFrame(test.raf); test.raf = null; test.endAt = 0; test.finished = false;
     $("test-timer").textContent = "01:00";
     $("test-timer").className = "test-timer";
     $("test-start").textContent = "▶️ Départ";
-    $("test-timer-hint").textContent = "Un bip retentit à la fin de la minute.";
+    $("test-start").disabled = false;
+    $("test-timer-hint").textContent = "Un bip et un flash à la fin de la minute.";
   }
   function tickTest() {
     var left = (test.endAt - Date.now()) / 1000;
@@ -374,9 +575,10 @@
       el.textContent = "00:00"; el.className = "test-timer over";
       test.raf = null; test.endAt = 0; test.finished = true;
       $("test-start").textContent = "▶️ Départ";
-      $("test-timer-hint").textContent = "⏰ Temps écoulé ! Note les répétitions ci-dessous.";
+      $("test-start").disabled = false;
+      $("test-timer-hint").textContent = "⏰ STOP ! Note le nombre de répétitions en dessous.";
       beep(880, 0.6, 1);
-      try { document.querySelector("[data-testn]").focus(); } catch (e) {}
+      flash("stop");
       return;
     }
     el.textContent = mmss(left);
@@ -389,44 +591,76 @@
     test.endAt = Date.now() + TEST * 1000;
     test.finished = false;
     $("test-start").textContent = "⏱️ En cours…";
-    $("test-timer-hint").textContent = "C'est parti : maximum de répétitions !";
+    $("test-start").disabled = true;
+    $("test-timer-hint").textContent = "C'est parti : le plus de répétitions possible !";
     beep(660, 0.15, 2);
+    flash("go");
     test.raf = requestAnimationFrame(tickTest);
   });
-  $("test-reset").addEventListener("click", resetTestTimer);
+  $("test-reset").addEventListener("click", function () {
+    if (!test.raf && !test.finished) { resetTestTimer(); return; }
+    ask({ title: "↺ Recommencer le chrono ?", text: test.raf ? "Le chrono tourne : il sera remis à 1:00." : "Le chrono sera remis à 1:00.", no: "Non", yes: "Oui, recommencer" }, resetTestTimer);
+  });
   $("test-close").addEventListener("click", function () {
     if (test.raf) {
-      ask({ title: "⏱️ Chrono en cours", text: "Quitter le test ? Le chrono sera arrêté.", yes: "Oui, quitter" }, closeTest);
+      ask({ title: "⏱️ Chrono en cours", text: "Quitter le test ? Le chrono sera arrêté.", no: "Non, je reste", yes: "Oui, quitter" }, closeTest);
       return;
     }
     closeTest();
   });
   $("test-fiche").addEventListener("click", function () { openFiche(test.id); });
+  $("test-fix").addEventListener("click", function () { openTestsDlg(test.id); });
+  $("test-levels").addEventListener("click", function (e) {
+    var b = e.target.closest("[data-tcnt]");
+    if (!b) return;
+    var inp = document.querySelector('[data-testn="' + b.dataset.for + '"]');
+    var v = Math.max(0, Math.min(999, (intVal(inp.value) || 0) + (+b.dataset.tcnt)));
+    inp.value = String(v);
+  });
+
+  // Seuil au-delà duquel on demande « tu es sûr ? » (faute de frappe 150 au lieu de 15)
+  function highLimit(id, n) {
+    var l = EX[id].levels[n - 1], r = state.records[id];
+    return Math.max(10, Math.round(l.expected * 2.5), r && r["n" + n] != null ? Math.round(r["n" + n] * 1.5) : 0);
+  }
   $("test-save").addEventListener("click", function () {
+    if ($("test").hidden) return; // double appui
     var vals = {}, any = false, bad = false;
     document.querySelectorAll("[data-testn]").forEach(function (inp) {
-      var v = num(inp.value);
-      if (v != null) { any = true; if (v < 0 || v > 999) bad = true; vals[inp.dataset.testn] = v; }
+      if (inp.value.trim() === "") return;
+      var v = intVal(inp.value);
+      if (v == null) bad = true; else { any = true; vals[inp.dataset.testn] = v; }
     });
-    if (!any) { toast("Note les répétitions d'au moins un niveau.", true); return; }
-    if (bad) { toast("Nombre de répétitions invalide.", true); return; }
+    if (bad) { toast("Écris seulement un nombre entier (ex. 15).", true); return; }
+    if (!any) { toast("Note le nombre de répétitions d'au moins un niveau.", true); return; }
     var id = test.id;
-    var t = state.seance.tests[id] || {};
-    var r = state.records[id] || {};
-    Object.keys(vals).forEach(function (n) {
-      var k = "n" + n, v = vals[n];
-      t[k] = t[k] == null ? v : Math.max(t[k], v);
-      r[k] = r[k] == null ? v : Math.max(r[k], v);
-    });
-    t.at = new Date().toISOString();
-    r.lastAt = t.at;
-    r.tests = r.tests || [];
-    var entry = { at: t.at };
+    var doSave = function () { if (!$("test").hidden && test.id === id) commitTest(id, vals); };
+    var checkHigh = function () {
+      var high = Object.keys(vals).filter(function (n) { return vals[n] > highLimit(id, +n); });
+      if (!high.length) { doSave(); return; }
+      var n = high[0], l = EX[id].levels[n - 1];
+      askNext({ title: "🤔 Vérifie le nombre", text: vals[n] + " répétitions en 1 minute (niveau " + n + ") ? C'est beaucoup !", foot: "Repère : " + l.expected + " en 1 minute. Une faute de frappe ?",
+        no: "Non, je corrige", yes: "Oui, c'est juste", onNo: function () { try { document.querySelector('[data-testn="' + n + '"]').select(); } catch (e) {} } }, doSave);
+    };
+    if (test.raf) {
+      ask({ title: "⏱️ Le chrono tourne encore", text: "Il reste " + mmss((test.endAt - Date.now()) / 1000) + ". Enregistrer quand même ?", no: "Non, j'attends", yes: "Oui, enregistrer" }, function () {
+        cancelAnimationFrame(test.raf); test.raf = null;
+        var high = Object.keys(vals).some(function (n) { return vals[n] > highLimit(id, +n); });
+        if (high) checkHigh(); else doSave();
+      });
+      return;
+    }
+    checkHigh();
+  });
+  function commitTest(id, vals) {
+    var entry = { at: new Date().toISOString(), sid: state.seance.id };
     Object.keys(vals).forEach(function (n) { entry["n" + n] = vals[n]; });
+    var r = state.records[id] || { tests: [] };
+    r.tests = r.tests || [];
     r.tests.push(entry);
-    if (r.tests.length > 30) r.tests = r.tests.slice(-30);
-    state.seance.tests[id] = t;
+    if (r.tests.length > 100) r.tests = r.tests.slice(-100);
     state.records[id] = r;
+    recompute(state, id);
     save();
     closeTest();
     renderGrid("train");
@@ -434,6 +668,62 @@
     var shown = {};
     Object.keys(vals).forEach(function (n) { shown["n" + n] = vals[n]; });
     toast("✅ " + EX[id].name + " : " + bestTxt(shown) + " enregistré");
+  }
+
+  // Meilleurs scores recalculés à partir de la liste des tests (après correction, suppression ou import)
+  function recompute(s, id) {
+    var r = s.records[id];
+    if (!r) return;
+    var cur = {}, curAt = null;
+    r.n1 = r.n2 = r.n3 = null; r.lastAt = null;
+    (r.tests || []).forEach(function (t) {
+      ["n1", "n2", "n3"].forEach(function (k) {
+        if (t[k] == null) return;
+        r[k] = r[k] == null ? t[k] : Math.max(r[k], t[k]);
+        if (t.sid === s.seance.id) cur[k] = cur[k] == null ? t[k] : Math.max(cur[k], t[k]);
+      });
+      if (!r.lastAt || t.at > r.lastAt) r.lastAt = t.at;
+      if (t.sid === s.seance.id && (!curAt || t.at > curAt)) curAt = t.at;
+    });
+    if (r.n1 == null && r.n2 == null && r.n3 == null) delete s.records[id];
+    if (curAt) { cur.at = curAt; s.seance.tests[id] = cur; } else delete s.seance.tests[id];
+  }
+
+  /* ---------- Corriger : liste des tests d'un exercice, avec suppression ---------- */
+  var testsDlgId = null;
+  function openTestsDlg(id) {
+    testsDlgId = id;
+    renderTestsDlg();
+    openDialog("tests-dlg");
+  }
+  function renderTestsDlg() {
+    var id = testsDlgId, r = state.records[id];
+    $("tests-title").textContent = "✏️ " + EX[id].name + " : mes tests";
+    if (!r || !r.tests || !r.tests.length) { $("tests-list").innerHTML = '<p class="muted">Aucun test.</p>'; return; }
+    $("tests-list").innerHTML = r.tests.map(function (t, i) {
+      var tag = t.sid === state.seance.id ? "aujourd'hui" : t.old ? "ancienne version" : t.imp ? "autre tablette" : shortDate(t.at);
+      return '<div class="tt-row"><span><b>' + esc(bestTxt(t)) + '</b> <span class="muted small">' + esc(tag) + (t.sid === state.seance.id ? " " + timeFr(t.at) : "") + "</span></span>" +
+        '<button type="button" class="btn small danger" data-tdel="' + i + '">🗑 Supprimer</button></div>';
+    }).reverse().join("");
+  }
+  $("tests-list").addEventListener("click", function (e) {
+    var b = e.target.closest("[data-tdel]");
+    if (!b) return;
+    var id = testsDlgId, r = state.records[id], i = +b.dataset.tdel, t = r && r.tests[i];
+    if (!t) return;
+    closeDialog("tests-dlg");
+    ask({ title: "🗑 Supprimer ce test ?", text: EX[id].name + " : " + bestTxt(t), no: "Non", yes: "Oui, supprimer", danger: true,
+      onNo: function () { openDialog("tests-dlg"); } }, function () {
+      r.tests.splice(i, 1);
+      recompute(state, id);
+      save();
+      renderGrid("train");
+      updateCounts();
+      if (!$("test").hidden && test.id === id) renderTestBest();
+      if (state.tab === "hist") renderHistory();
+      toast("🗑 Test supprimé : record recalculé");
+      if (state.records[id]) { renderTestsDlg(); openDialog("tests-dlg"); }
+    });
   });
 
   /* =========================================================
@@ -473,14 +763,17 @@
     $("fiche").hidden = false;
     $("fiche").querySelector(".overlay-body").scrollTop = 0;
     document.body.style.overflow = "hidden";
+    openLayer("fiche", hideFiche);
   }
-  $("fiche-close").addEventListener("click", function () {
+  function hideFiche() {
     $("fiche").hidden = true;
     if ($("test").hidden) document.body.style.overflow = "";
-  });
+  }
+  $("fiche-close").addEventListener("click", function () { if (!closeLayer("fiche")) hideFiche(); });
   $("fiche-test").addEventListener("click", function () {
-    $("fiche").hidden = true;
+    if (!closeLayer("fiche")) hideFiche();
     if (test.id === ficheId && !$("test").hidden) return;
+    if (!$("test").hidden) closeTest();
     openTest(ficheId);
   });
 
@@ -506,13 +799,19 @@
     if (!r) return [];
     return EX[exId].levels.map(function (l) { return l.n; }).filter(function (n) { return r["n" + n] != null; });
   }
+  // Invité (tablette empruntée) : son catalogue est sur sa tablette, il peut donc choisir tous les exercices
+  function usableLevels(exId) {
+    var lv = testedLevels(exId);
+    if (!lv.length && isGuest()) return EX[exId].levels.map(function (l) { return l.n; });
+    return lv;
+  }
   function catalogue(famId) {
-    return EXERCISES.filter(function (e) { return e.family === famId && testedLevels(e.id).length; });
+    return EXERCISES.filter(function (e) { return e.family === famId && usableLevels(e.id).length; });
   }
   function sanitizeCfg() {
     FAMILIES.forEach(function (f) {
       var sel = state.cfg.selection[f.id];
-      var lv = sel ? testedLevels(sel) : [];
+      var lv = sel && EX[sel] ? usableLevels(sel) : [];
       if (sel && !lv.length) { state.cfg.selection[f.id] = ""; state.cfg.objectives[f.id] = ""; return; }
       if (sel && lv.indexOf(state.cfg.levels[f.id]) === -1) {
         state.cfg.levels[f.id] = lv[lv.length - 1];
@@ -534,15 +833,15 @@
         return '<button type="button" data-fam="' + f.id + '" data-pick="' + e.id + '" aria-pressed="' + (sel === e.id) + '">' + esc(e.name) + "</button>";
       }).join("") + "</div>";
       if (sel) {
-        var e = EX[sel], r = state.records[sel], lv = testedLevels(sel);
+        var e = EX[sel], r = state.records[sel] || {}, lv = usableLevels(sel);
         h += '<div class="lvl">' + e.levels.map(function (l) {
-          var ok = lv.indexOf(l.n) !== -1;
+          var ok = lv.indexOf(l.n) !== -1, sc = r["n" + l.n];
           return '<button type="button" data-fam="' + f.id + '" data-lvl="' + l.n + '" aria-pressed="' + (lvl === l.n) + '"' + (ok ? "" : " disabled") + ">Niveau " + l.n +
-            "<small>" + esc(l.label) + (ok ? " · test : " + r["n" + l.n] + "/min" : " · pas testé") + "</small></button>";
+            "<small>" + esc(l.label) + (sc != null ? " · test : " + sc + "/min" : ok ? "" : " · pas testé") + "</small></button>";
         }).join("") + "</div>";
-        h += '<div class="obj"><label>Objectif par bloc<br><span class="muted small">repère ' + expectedBase(sel, lvl) + " · ton test : " + r["n" + lvl] + "/min</span></label>" +
+        h += '<div class="obj"><label>Objectif par bloc<br><span class="muted small">repère ' + expectedBase(sel, lvl) + (r["n" + lvl] != null ? " · ton test : " + r["n" + lvl] + "/min" : "") + "</span></label>" +
           '<button type="button" data-fam="' + f.id + '" data-obj="-1">−</button>' +
-          '<input type="number" inputmode="numeric" min="1" max="999" data-objin="' + f.id + '" value="' + esc(state.cfg.objectives[f.id]) + '">' +
+          '<input type="text" inputmode="numeric" pattern="[0-9]*" maxlength="3" data-int data-objin="' + f.id + '" value="' + esc(state.cfg.objectives[f.id]) + '">' +
           '<button type="button" data-fam="' + f.id + '" data-obj="1">+</button></div>';
       } else {
         h += '<p class="fam-empty">Choisis un exercice de ton catalogue.</p>';
@@ -568,7 +867,7 @@
       return;
     }
     if (b.dataset.pick) {
-      var lvs = testedLevels(b.dataset.pick);
+      var lvs = usableLevels(b.dataset.pick);
       state.cfg.selection[fam] = b.dataset.pick;
       state.cfg.levels[fam] = lvs.indexOf(state.cfg.levels[fam] || 1) !== -1 ? (state.cfg.levels[fam] || 1) : lvs[lvs.length - 1];
       state.cfg.objectives[fam] = String(expectedBase(b.dataset.pick, state.cfg.levels[fam]));
@@ -608,6 +907,7 @@
     var bad = FAMILIES.filter(function (f) { var o = num(state.cfg.objectives[f.id]); return o == null || o <= 0; });
     if (bad.length) { $("skill-config-hint").textContent = "Objectif manquant (nombre supérieur à 0) en : " + bad.map(function (f) { return f.label; }).join(", ") + "."; return; }
     var go = function () {
+      if (state.run) return;
       var cfg = JSON.parse(JSON.stringify(state.cfg));
       FAMILIES.forEach(function (f) { cfg.objectives[f.id] = num(cfg.objectives[f.id]); });
       var done = {};
@@ -616,13 +916,29 @@
       state.seance.skill = null;
       save();
       beep(660, 0.15, 2);
+      flash("go");
       keepAwake(true);
       renderSkill();
       updateCounts();
     };
-    if (state.seance.skill) {
-      ask({ title: "🔥 Nouvelle séance Skill", text: "Une séance Skill est déjà terminée aujourd'hui. La remplacer par une nouvelle ?", yes: "Oui, recommencer", danger: true }, go);
-    } else go();
+    var checkExisting = function () {
+      if (state.seance.skill) {
+        askNext({ title: "🔥 Nouvelle séance Skill", text: "Une séance Skill est déjà terminée aujourd'hui. La remplacer par une nouvelle ?", yes: "Oui, recommencer", danger: true }, go);
+      } else go();
+    };
+    // Objectif plus grand que le test d'1 minute entière : sûrement une erreur (total de séance au lieu de par bloc)
+    var high = FAMILIES.filter(function (f) {
+      var sel = state.cfg.selection[f.id], lvl = state.cfg.levels[f.id], r = state.records[sel] || {};
+      var ref = r["n" + lvl] != null ? r["n" + lvl] : expectedBase(sel, lvl);
+      return num(state.cfg.objectives[f.id]) > ref;
+    });
+    if (high.length) {
+      var f0 = high[0], sel0 = state.cfg.selection[f0.id], lvl0 = state.cfg.levels[f0.id], r0 = state.records[sel0] || {};
+      ask({ title: "🤔 Objectif très élevé", text: EX[sel0].name + " : " + state.cfg.objectives[f0.id] + " par bloc ? C'est plus que " + (r0["n" + lvl0] != null ? "ton test d'1 minute (" + r0["n" + lvl0] + ")" : "le repère d'1 minute (" + expectedBase(sel0, lvl0) + ")") + ".",
+        foot: "L'objectif = le nombre de répétitions dans UN bloc de 2 minutes, où tu fais les 4 exercices.", no: "Non, je corrige", yes: "Oui, je garde" }, checkExisting);
+      return;
+    }
+    checkExisting();
   });
 
   function skillTotals(result) {
@@ -654,13 +970,23 @@
   /* =========================================================
    * SKILL — séance en cours (basée sur l'heure : fiable même si l'écran se met en veille)
    * ======================================================= */
+  // Case vide = « à compléter » (et non 0) : on peut la corriger plus tard
   function commitBlock() {
     var r = state.run;
-    var done = {};
-    FAMILIES.forEach(function (f) { var n = num(r.done[f.id]); done[f.id] = n == null ? 0 : Math.max(0, n); r.done[f.id] = ""; });
-    r.blocks.push({ practice: r.pending.practice, recover: r.pending.recover, done: done });
+    var done = {}, missing = false;
+    FAMILIES.forEach(function (f) {
+      var n = intVal(r.done[f.id]);
+      done[f.id] = n;
+      if (n == null) missing = true;
+      r.done[f.id] = "";
+    });
+    var b = { practice: r.pending.practice, recover: r.pending.recover, done: done };
+    if (missing) b.missing = true;
+    r.blocks.push(b);
     r.pending = null;
+    r.undo = 0;
   }
+  function blocksMissing(blocks) { return (blocks || []).filter(function (b) { return FAMILIES.some(function (f) { return b.done[f.id] == null; }); }).length; }
   function finishRun(stoppedEarly) {
     var r = state.run;
     if (r.blocks.length) {
@@ -673,7 +999,9 @@
     renderSkill();
     if (state.seance.skill) {
       beep(990, 0.25, 3);
-      toast("🎉 Séance Skill terminée !");
+      flash("end");
+      var miss = blocksMissing(state.seance.skill.blocks);
+      toast(miss ? "🎉 Séance terminée ! ⚠️ " + miss + " bloc(s) à compléter (en rouge)" : "🎉 Séance Skill terminée !", !!miss);
     }
   }
   function stopRunSilently() { state.run = null; keepAwake(false); }
@@ -690,7 +1018,7 @@
           r.phase = "sas";
           r.phaseEnd = r.workStart + (BLOCK + SAS) * 1000;
           changed = true;
-          if (now - r.workStart < (BLOCK + 2) * 1000) beep(440, 0.7, 1);
+          if (now - r.workStart < (BLOCK + 2) * 1000) { beep(440, 0.7, 1); flash("stop"); }
           continue;
         }
       } else if (now >= r.phaseEnd) {
@@ -700,12 +1028,12 @@
         if (r.blocks.length >= r.totalBlocks) { finishRun(false); return true; }
         r.phase = "work";
         r.workStart = boundary;
-        if (now - boundary < 2000) beep(660, 0.15, 2);
+        if (now - boundary < 2000) { beep(660, 0.15, 2); flash("go"); }
         continue;
       }
       break;
     }
-    // bips des 3 dernières secondes de récupération / saisie
+    // bips des 3 dernières secondes de repos / saisie
     if (r.phase !== "work") {
       var left = Math.ceil((r.phaseEnd - now) / 1000);
       var k = r.blocks.length + ":" + left;
@@ -722,6 +1050,7 @@
     var blockNo = Math.min(r.blocks.length + 1, r.totalBlocks);
     $("run-block").textContent = "Bloc " + blockNo + "/" + r.totalBlocks;
     var main = $("run-main");
+    $("run-undo").hidden = !(r.undo && now < r.undo && r.phase !== "work");
     if (r.phase === "work") {
       var el = (now - r.workStart) / 1000;
       head.className = "card run-head ph-work";
@@ -729,35 +1058,35 @@
       $("run-timer").textContent = mmss(Math.floor(el));
       $("run-sub").textContent = "fin du bloc dans " + mmss(BLOCK - el);
       $("run-bar").style.width = Math.min(100, el / BLOCK * 100) + "%";
-      main.textContent = "✋ Circuit terminé";
+      main.textContent = "✋ J'ai fini le circuit";
       main.className = "btn big full stop";
       main.disabled = false;
-      $("run-help").textContent = "Fais le circuit des 4 exercices. Touche le bouton dès que c'est fini.";
-      $("run-inputs-title").textContent = "Répétitions réalisées ce bloc";
+      $("run-help").textContent = "Fais les 4 exercices. Touche le bouton quand c'est fini. L'observateur compte avec « +1 ».";
+      $("run-inputs-title").textContent = "Observateur : compte les répétitions";
     } else if (r.phase === "recovery") {
       var left = (r.phaseEnd - now) / 1000;
       head.className = "card run-head ph-recov";
-      $("run-phase").textContent = "RÉCUPÉRATION";
+      $("run-phase").textContent = "REPOS";
       $("run-timer").textContent = mmss(left);
-      $("run-sub").textContent = "circuit fait en " + mmss(r.pending.practice) + " · bloc suivant automatique";
+      $("run-sub").textContent = "circuit fait en " + mmss(r.pending.practice) + " · le bloc suivant part tout seul";
       $("run-bar").style.width = Math.max(0, 100 - left / r.pending.recover * 100) + "%";
-      main.textContent = "📝 Observateur : note les répétitions";
+      main.textContent = "📝 Observateur : vérifie les nombres";
       main.className = "btn big full wait";
       main.disabled = true;
-      $("run-help").textContent = "Le bloc est enregistré tout seul à la fin de la récupération.";
-      $("run-inputs-title").textContent = "📝 Saisis les répétitions de ce bloc";
+      $("run-help").textContent = "Repose-toi. Le bloc est enregistré tout seul à la fin du repos.";
+      $("run-inputs-title").textContent = "📝 Répétitions de ce bloc";
     } else {
       var left2 = (r.phaseEnd - now) / 1000;
       head.className = "card run-head ph-sas";
-      $("run-phase").textContent = "TEMPS ÉCOULÉ — SAISIE";
+      $("run-phase").textContent = "STOP ! NOTE VITE";
       $("run-timer").textContent = mmss(left2);
-      $("run-sub").textContent = "enregistrement automatique dans " + Math.ceil(Math.max(0, left2)) + " s";
+      $("run-sub").textContent = "enregistré tout seul dans " + Math.ceil(Math.max(0, left2)) + " s";
       $("run-bar").style.width = Math.max(0, 100 - left2 / SAS * 100) + "%";
-      main.textContent = "✅ Saisie faite : bloc suivant";
+      main.textContent = "✅ C'est noté : bloc suivant";
       main.className = "btn big full go";
       main.disabled = false;
-      $("run-help").textContent = "Les 2 minutes sont écoulées : note vite les répétitions.";
-      $("run-inputs-title").textContent = "📝 Saisis les répétitions de ce bloc";
+      $("run-help").textContent = "Les 2 minutes sont finies : écris vite les répétitions. Une case vide pourra être complétée après.";
+      $("run-inputs-title").textContent = "📝 Répétitions de ce bloc";
     }
   }
 
@@ -770,7 +1099,9 @@
       var e = EX[r.cfg.selection[f.id]];
       var lv = e.levels[(r.cfg.levels[f.id] || 1) - 1];
       return '<div class="run-item f-' + f.id + '"><div><b>' + esc(e.name) + "</b><span>N" + lv.n + " · " + esc(lv.label) + " · objectif " + r.cfg.objectives[f.id] + "</span></div>" +
-        '<input type="number" inputmode="numeric" min="0" max="999" placeholder="0" data-done="' + f.id + '" value="' + esc(r.done[f.id]) + '"></div>';
+        '<div class="counter"><button type="button" data-rcnt="-1" data-fam="' + f.id + '" aria-label="moins 1">−</button>' +
+        '<input type="text" inputmode="numeric" pattern="[0-9]*" maxlength="3" autocomplete="off" placeholder="—" data-int data-done="' + f.id + '" value="' + esc(r.done[f.id]) + '">' +
+        '<button type="button" data-rcnt="1" data-fam="' + f.id + '" aria-label="plus 1">+1</button></div></div>';
     }).join("");
   }
   $("run-ex").addEventListener("input", function (e) {
@@ -779,16 +1110,26 @@
     state.run.done[fam] = e.target.value;
     save();
   });
+  $("run-ex").addEventListener("click", function (e) {
+    var b = e.target.closest("[data-rcnt]");
+    if (!b || !state.run) return;
+    var fam = b.dataset.fam, inp = document.querySelector('[data-done="' + fam + '"]');
+    var v = Math.max(0, Math.min(999, (intVal(state.run.done[fam]) || 0) + (+b.dataset.rcnt)));
+    state.run.done[fam] = String(v);
+    if (inp) inp.value = String(v);
+    save();
+  });
 
   function logHtml(blocks, cfg, editable) {
     if (!blocks.length) return '<p class="muted">Aucun bloc pour l\'instant.</p>';
     return blocks.map(function (b, i) {
-      return '<div class="log-row"><div class="top"><span>Bloc ' + (i + 1) + '</span><span class="muted">travail ' + mmss(b.practice) + " · récup " + mmss(b.recover) + "</span></div>" +
+      var miss = FAMILIES.some(function (f) { return b.done[f.id] == null; });
+      return '<div class="log-row' + (miss ? " missing" : "") + '"><div class="top"><span>Bloc ' + (i + 1) + (miss ? " · ⚠️ à compléter" : "") + '</span><span class="muted">travail ' + mmss(b.practice) + " · repos " + mmss(b.recover) + "</span></div>" +
         '<div class="vals">' + FAMILIES.map(function (f) {
-          var name = EX[cfg.selection[f.id]].name;
+          var name = EX[cfg.selection[f.id]].name, v = b.done[f.id];
           return editable
-            ? "<label>" + esc(name) + '<input type="number" inputmode="numeric" min="0" max="999" data-edit-block="' + i + '" data-edit-fam="' + f.id + '" value="' + esc(b.done[f.id]) + '"></label>'
-            : "<label>" + esc(name) + "<b>" + esc(b.done[f.id]) + "</b></label>";
+            ? "<label>" + esc(name) + '<input type="text" inputmode="numeric" pattern="[0-9]*" maxlength="3" placeholder="?" data-int data-edit-block="' + i + '" data-edit-fam="' + f.id + '" value="' + esc(v == null ? "" : v) + '"' + (v == null ? ' class="miss"' : "") + "></label>"
+            : "<label>" + esc(name) + "<b>" + (v == null ? "?" : esc(v)) + "</b></label>";
         }).join("") + "</div></div>";
     }).join("");
   }
@@ -804,13 +1145,18 @@
     var t = e.target;
     if (!t.dataset || t.dataset.editBlock == null) return;
     var blocks = state.run ? state.run.blocks : state.seance.skill ? state.seance.skill.blocks : null;
-    if (!blocks || !blocks[+t.dataset.editBlock]) return;
-    var n = num(t.value);
-    blocks[+t.dataset.editBlock].done[t.dataset.editFam] = n == null ? 0 : Math.max(0, n);
+    var b = blocks && blocks[+t.dataset.editBlock];
+    if (!b) return;
+    b.done[t.dataset.editFam] = intVal(t.value);
+    if (FAMILIES.every(function (f) { return b.done[f.id] != null; })) delete b.missing;
+    t.classList.toggle("miss", b.done[t.dataset.editFam] == null);
     save();
   });
   document.addEventListener("change", function (e) {
-    if (e.target.dataset && e.target.dataset.editBlock != null) { toast("✏️ Correction enregistrée"); if (!state.run) renderFinRecap(); }
+    if (e.target.dataset && e.target.dataset.editBlock != null) {
+      toast("✏️ Correction enregistrée");
+      if (!state.run) renderFinRecap(); else renderRunLog();
+    }
   });
 
   $("run-main").addEventListener("click", function () {
@@ -818,26 +1164,33 @@
     if (!r) return;
     unlockAudio();
     if (r.phase === "work") {
-      var practice = Math.max(1, Math.min(BLOCK, Math.round((Date.now() - r.workStart) / 1000)));
-      ask({ title: "✋ Circuit terminé ?", text: "Terminer le bloc " + (r.blocks.length + 1) + " en " + mmss(practice) + " et passer en récupération ?", yes: "Oui, terminé", go: true }, function () {
-        var rr = state.run;
-        if (!rr || rr.phase !== "work") return;
-        var p = Math.max(1, Math.min(BLOCK, Math.round((Date.now() - rr.workStart) / 1000)));
-        rr.pending = { practice: p, recover: BLOCK - p };
-        if (rr.pending.recover > 0) { rr.phase = "recovery"; rr.phaseEnd = rr.workStart + BLOCK * 1000; }
-        else { rr.phase = "sas"; rr.phaseEnd = Date.now() + SAS * 1000; }
-        save();
-        beep(440, 0.3, 1);
-        renderSkill();
-      });
+      // Pas de question : on peut annuler pendant 6 s si on a touché par erreur
+      var p = Math.max(1, Math.min(BLOCK, Math.round((Date.now() - r.workStart) / 1000)));
+      r.pending = { practice: p, recover: BLOCK - p };
+      if (r.pending.recover > 0) { r.phase = "recovery"; r.phaseEnd = r.workStart + BLOCK * 1000; }
+      else { r.phase = "sas"; r.phaseEnd = Date.now() + SAS * 1000; }
+      r.undo = Date.now() + 6000;
+      save();
+      beep(440, 0.3, 1);
+      flash("stop");
+      renderSkill();
     } else if (r.phase === "sas") {
       commitBlock();
       if (r.blocks.length >= r.totalBlocks) { finishRun(false); return; }
       r.phase = "work"; r.workStart = Date.now();
       save();
       beep(660, 0.15, 2);
+      flash("go");
       renderSkill();
     }
+  });
+  $("run-undo").addEventListener("click", function () {
+    var r = state.run;
+    if (!r || r.phase === "work" || !r.undo || Date.now() > r.undo + 1000) return;
+    r.phase = "work"; r.pending = null; r.phaseEnd = 0; r.undo = 0;
+    save();
+    toast("↩️ Annulé : le circuit continue");
+    renderSkill();
   });
 
   $("run-stop").addEventListener("click", function () {
@@ -845,7 +1198,7 @@
     if (!r) return;
     var n = r.blocks.length + (r.pending ? 1 : 0);
     ask({ title: "⏹ Arrêter la séance ?", text: n ? "La séance s'arrête maintenant. Les " + n + " bloc(s) terminé(s) sont gardés." : "Aucun bloc n'est terminé : la séance sera annulée.",
-      yes: "Oui, arrêter", danger: true }, function () {
+      no: "Non, continuer", yes: "Oui, arrêter", danger: true }, function () {
       var rr = state.run;
       if (!rr) return;
       if (rr.pending) commitBlock();
@@ -914,7 +1267,7 @@
     if (!ids.length) {
       $("hist-catalogue").innerHTML = '<p class="muted">Aucun exercice testé pour l\'instant : va dans Entraînement.</p>';
     } else {
-      $("hist-catalogue").innerHTML = '<table class="cat-table"><tr><th></th><th>Exercice</th><th>N1</th><th>N2</th><th>N3</th><th>Dernier test</th></tr>' +
+      $("hist-catalogue").innerHTML = '<table class="cat-table"><tr><th></th><th>Exercice</th><th>N1</th><th>N2</th><th>N3</th><th>Dernier test</th><th></th></tr>' +
         ids.map(function (id) {
           var r = state.records[id], e = EX[id];
           var prog = function (k) {
@@ -926,7 +1279,8 @@
               if (!e.levels[n - 1]) return '<td class="muted">·</td>';
               return "<td><b>" + (r["n" + n] != null ? r["n" + n] : "—") + "</b>" + prog("n" + n) + "</td>";
             }).join("") +
-            "<td class=\"muted\">" + (r.lastAt ? esc(shortDate(r.lastAt)) : "—") + "</td></tr>";
+            "<td class=\"muted\">" + (r.lastAt ? esc(shortDate(r.lastAt)) : "—") + "</td>" +
+            '<td><button type="button" class="btn small ghost" data-fixex="' + id + '" aria-label="Corriger">✏️</button></td></tr>';
         }).join("") + "</table>";
     }
     var list = [];
@@ -978,8 +1332,8 @@
     return JSON.stringify(v).replace(/[\u007f-￿]/g, function (c) { return "\\u" + ("0000" + c.charCodeAt(0).toString(16)).slice(-4); });
   }
   function qrText() { return asciiJson(buildPayload()); }
-  function qrImg(text, cell) {
-    var q = qrcode(0, "M");
+  function qrImg(text, cell, ecl) {
+    var q = qrcode(0, ecl || "M");
     q.addData(text, "Byte");
     q.make();
     var img = new Image();
@@ -999,11 +1353,13 @@
     h += "</section>";
     var sk = state.seance.skill;
     h += '<section class="r-skill"><h3>🔥 Skill' + (sk ? " — " + sk.blocks.length + " bloc(s)" + (sk.stoppedEarly ? " (arrêtée)" : "") : "") + "</h3>";
-    if (state.run) h += "<p>Séance Skill en cours… (termine-la avant de faire scanner)</p>";
+    if (state.run) h += "<p>🔒 Séance Skill en cours : termine-la (ou arrête-la) avant de faire scanner.</p>";
     else if (sk) {
       var tot = skillTotals(sk);
       h += FAMILIES.map(function (f) { var t = tot[f.id]; return "<p>" + esc(EX[t.id].name) + " (N" + t.level + ") : <b>" + t.done + "</b> / " + t.expected + "</p>"; }).join("");
-      h += '<details><summary class="muted">✏️ Corriger un bloc</summary><div class="log">' + logHtml(sk.blocks, sk.cfg, true) + "</div></details>";
+      var miss = blocksMissing(sk.blocks);
+      if (miss) h += '<p class="warn">⚠️ ' + miss + " bloc(s) à compléter : écris les nombres dans les cases rouges ci-dessous.</p>";
+      h += '<details' + (miss ? " open" : "") + '><summary class="muted">✏️ Corriger un bloc</summary><div class="log">' + logHtml(sk.blocks, sk.cfg, true) + "</div></details>";
     } else h += "<p>—</p>";
     h += "</section>";
     $("fin-recap").innerHTML = h;
@@ -1012,25 +1368,35 @@
     renderFinRecap();
     var box = $("fin-qr");
     box.innerHTML = "";
+    $("fin-fullscreen").disabled = !!state.run;
+    if (state.run) {
+      box.innerHTML = '<p class="lock">🔒 Le QR apparaîtra quand la séance Skill sera finie.</p>';
+      $("fin-qr-info").textContent = "Termine la séance (ou ⏹ Arrêter) dans l'onglet 🔥 Skill.";
+      return;
+    }
     var t = qrText();
     try {
       box.appendChild(qrImg(t, 5));
-      var note = seanceEmpty() ? "Séance vide : le QR ne contient que l'identité. " : state.run ? "⚠️ Séance Skill en cours : elle n'est pas encore dans le QR. " : "";
+      var miss = state.seance.skill ? blocksMissing(state.seance.skill.blocks) : 0;
+      var note = seanceEmpty() ? "Séance vide : le QR ne contient que l'identité. " : miss ? "⚠️ " + miss + " bloc(s) à compléter (comptés 0). " : "";
       $("fin-qr-info").textContent = note + t.length + " caractères";
     } catch (e) {
       box.textContent = "QR impossible.";
     }
   }
   $("fin-fullscreen").addEventListener("click", function () {
+    if (state.run) { toast("Termine d'abord la séance Skill.", true); return; }
     var holder = $("qr-full-code");
     holder.innerHTML = "";
     try { holder.appendChild(qrImg(qrText(), 9)); } catch (e) { holder.textContent = "QR impossible."; }
     var s = state.student;
     $("qr-full-name").textContent = s.prenom + " " + s.nom + ". · " + s.classe;
     $("qr-full").hidden = false;
+    openLayer("qr", function () { $("qr-full").hidden = true; });
     if (!seanceEmpty()) { state.seance.qrShownAt = new Date().toISOString(); save(); }
   });
-  $("qr-full-close").addEventListener("click", function () { $("qr-full").hidden = true; });
+  $("qr-full-close").addEventListener("click", function () { if (!closeLayer("qr")) $("qr-full").hidden = true; });
+  $("hist-catalogue").addEventListener("click", function (e) { var b = e.target.closest("[data-fixex]"); if (b) openTestsDlg(b.dataset.fixex); });
 
   /* ---------- Carnet ---------- */
   function carnetText() {
@@ -1061,7 +1427,7 @@
       });
       L.push("Détail par bloc :");
       sk.blocks.forEach(function (b, i) {
-        L.push("  Bloc " + (i + 1) + " (" + mmss(b.practice) + ") : " + FAMILIES.map(function (f) { return EX[sk.cfg.selection[f.id]].name + " " + b.done[f.id]; }).join(", "));
+        L.push("  Bloc " + (i + 1) + " (" + mmss(b.practice) + ") : " + FAMILIES.map(function (f) { return EX[sk.cfg.selection[f.id]].name + " " + (b.done[f.id] == null ? "?" : b.done[f.id]); }).join(", "));
       });
     }
     if (!ids.length && !sk) { L.push(""); L.push("(Aucun résultat enregistré pendant cette séance.)"); }
@@ -1139,6 +1505,7 @@
     toast("🆕 Nouvelle séance : tout est prêt");
   }
   function askNewSeance() {
+    if (state.run) { toast("Une séance Skill est en cours : arrête-la d'abord (⏹ en bas de l'onglet Skill).", true); selectTab("skill"); return; }
     if (seanceEmpty()) { state.seance = newSeance(); save(); $("old-banner").hidden = true; toast("La séance est déjà vide : tu peux commencer."); return; }
     // (la séance est archivée dans l'Historique avant d'être effacée)
     ask({ title: "🆕 Nouvelle séance", text: "Effacer cette séance ?", foot: "(" + summary() + ")", yes: "Oui" }, function () {
@@ -1178,6 +1545,275 @@
   }
 
   /* =========================================================
+   * TRANSFERT entre tablettes (élève qui a utilisé la tablette d'un camarade)
+   * QR (ou fichier) : {t:"CTX", v:1, id, at, s:{p,n,c}, r:{code:[jour,n1,n2,n3]}, h:[séances]}
+   * Fichier : r:{code:[[date,n1,n2,n3],…]} (tous les tests), f:1
+   * ======================================================= */
+  var CODE2ID = {};
+  Object.keys(EXO_CODES).forEach(function (id) { CODE2ID[EXO_CODES[id]] = id; });
+  var XFER_MAX = 2600;
+  function nz(v) { return v == null ? null : v; }
+  function trimNulls(a) { while (a.length && a[a.length - 1] == null) a.pop(); return a; }
+  function packSeance(se) {
+    var o = { i: se.id, d: se.date, t: {} };
+    Object.keys(se.tests || {}).forEach(function (id) {
+      var t = se.tests[id], c = EXO_CODES[id];
+      if (c) o.t[c] = trimNulls([nz(t.n1), nz(t.n2), nz(t.n3)]);
+    });
+    var k = se.skill;
+    if (k) {
+      o.k = {
+        s: FAMILIES.map(function (f) { return EXO_CODES[k.cfg.selection[f.id]] || ""; }),
+        l: FAMILIES.map(function (f) { return k.cfg.levels[f.id]; }),
+        o: FAMILIES.map(function (f) { return k.cfg.objectives[f.id]; }),
+        u: k.cfg.duration, m: k.durationMinutes, x: k.stoppedEarly ? 1 : 0, f: k.finishedAt,
+        b: k.blocks.map(function (b) { return [b.practice, b.recover].concat(FAMILIES.map(function (f) { return nz(b.done[f.id]); })); })
+      };
+    }
+    return o;
+  }
+  function okNum(v) { return typeof v === "number" && isFinite(v) && v >= 0 && v < 1000 ? Math.round(v) : null; }
+  function unpackSeance(o) {
+    var se = { id: String(o.i || ""), date: String(o.d || ""), tests: {}, skill: null };
+    Object.keys(o.t || {}).forEach(function (c) {
+      var id = CODE2ID[c], a = o.t[c], t = {}, any = false;
+      if (!id || !Array.isArray(a)) return;
+      [0, 1, 2].forEach(function (i) { var v = okNum(a[i]); if (v != null) { t["n" + (i + 1)] = v; any = true; } });
+      if (any) se.tests[id] = t;
+    });
+    var k = o.k;
+    if (k && Array.isArray(k.s) && Array.isArray(k.b)) {
+      var cfg = { selection: {}, levels: {}, objectives: {}, duration: k.u || k.m }, ok = true;
+      FAMILIES.forEach(function (f, i) {
+        var id = CODE2ID[k.s[i]];
+        if (!id) ok = false;
+        cfg.selection[f.id] = id;
+        cfg.levels[f.id] = k.l && k.l[i] || 1;
+        cfg.objectives[f.id] = k.o && okNum(k.o[i]) || 0;
+      });
+      if (ok) {
+        se.skill = {
+          cfg: cfg, durationMinutes: k.m, stoppedEarly: !!k.x, finishedAt: k.f,
+          blocks: k.b.map(function (a) { var d = {}; FAMILIES.forEach(function (f, i) { d[f.id] = okNum(a[2 + i]); }); return { practice: okNum(a[0]) || 0, recover: okNum(a[1]) || 0, done: d }; })
+        };
+      }
+    }
+    return se;
+  }
+  function xferPayload(full) {
+    var s = state.student;
+    var p = { t: "CTX", v: 1, id: uid(), at: new Date().toISOString(), s: { p: s.prenom, n: s.nom, c: s.classe }, r: {} };
+    if (full) p.f = 1;
+    Object.keys(state.records).forEach(function (id) {
+      var r = state.records[id], c = EXO_CODES[id];
+      if (!c) return;
+      p.r[c] = full
+        ? (r.tests || []).map(function (t) { return trimNulls([t.at, nz(t.n1), nz(t.n2), nz(t.n3)]); })
+        : trimNulls([(r.lastAt || p.at).slice(0, 10), nz(r.n1), nz(r.n2), nz(r.n3)]);
+    });
+    var ses = [];
+    var se = state.seance;
+    if (Object.keys(se.tests).length || se.skill) ses.push({ id: se.id, date: se.updatedAt || se.startedAt, tests: se.tests, skill: se.skill });
+    p.h = ses.concat(state.history || []).map(packSeance);
+    return p;
+  }
+  function xferQrPayload() {
+    var p = xferPayload(false), total = p.h.length;
+    while (asciiJson(p).length > XFER_MAX && p.h.length) p.h.pop();
+    return { p: p, total: total };
+  }
+
+  function mergeImport(ts, p) {
+    var nEx = 0, nSes = 0;
+    var mk = function (at, vals) {
+      var t = { at: String(at), imp: 1 };
+      vals.forEach(function (v, i) { v = okNum(v); if (v != null && i < 3) t["n" + (i + 1)] = v; });
+      return t;
+    };
+    Object.keys(p.r || {}).forEach(function (c) {
+      var id = CODE2ID[c], a = p.r[c];
+      if (!id || !Array.isArray(a)) return;
+      var entries = p.f
+        ? a.filter(Array.isArray).map(function (x) { return mk(x[0] || p.at, x.slice(1)); })
+        : [mk(a[0] ? String(a[0]).slice(0, 10) + "T12:00:00.000Z" : p.at, a.slice(1))];
+      var r = ts.records[id] || { tests: [] }, added = false;
+      r.tests = r.tests || [];
+      entries.forEach(function (t) {
+        if (t.n1 == null && t.n2 == null && t.n3 == null) return;
+        var dup = r.tests.some(function (x) { return String(x.at).slice(0, 16) === t.at.slice(0, 16) && x.n1 == t.n1 && x.n2 == t.n2 && x.n3 == t.n3; });
+        if (!dup) { r.tests.push(t); added = true; }
+      });
+      if (added) {
+        r.tests.sort(function (x, y) { return String(x.at) < String(y.at) ? -1 : 1; });
+        ts.records[id] = r;
+        recompute(ts, id);
+        nEx++;
+      }
+    });
+    (p.h || []).forEach(function (o) {
+      if (!o || typeof o !== "object") return;
+      var se = unpackSeance(o);
+      if (!se.id || se.id === ts.seance.id || ts.history.some(function (h) { return h.id === se.id; })) return;
+      if (!Object.keys(se.tests).length && !se.skill) return;
+      ts.history.push(se);
+      nSes++;
+    });
+    ts.history.sort(function (x, y) { return String(y.date).localeCompare(String(x.date)); });
+    if (ts.history.length > 40) ts.history = ts.history.slice(0, 40);
+    ts.imported.push(p.id);
+    return { ex: nEx, ses: nSes };
+  }
+
+  function handleImport(text) {
+    var p = null;
+    try { p = JSON.parse(String(text).replace(/^﻿/, "")); } catch (e) {}
+    if (p && p.html != null && p.text != null) { toast("Ce fichier est pour le carnet, pas pour récupérer tes résultats.", true); return false; }
+    if (!p || p.t !== "CTX" || !p.s || !p.s.p || !p.id) { toast("Ce n'est pas un transfert Cross Training.", true); return false; }
+    if (state.run) { toast("Une séance Skill est en cours : arrête-la d'abord.", true); return false; }
+    var who = p.s.p + " " + p.s.n + ". (" + p.s.c + ")";
+    var desc = Object.keys(p.r || {}).length + " exercice(s) testé(s), " + (p.h || []).length + " séance(s)";
+    var doIt = function (pid) {
+      if (!pid) {
+        pid = uid();
+        var ns = blankState();
+        ns.student = { prenom: cleanPrenom(p.s.p), nom: initial(p.s.n) || "X", classe: normalizeClasse(p.s.c), classeSaisie: String(p.s.c || ""), observer: "" };
+        store.profiles[pid] = { guest: !!store.active, createdAt: new Date().toISOString(), state: ns };
+      }
+      var ts = store.profiles[pid].state;
+      if (ts.imported.indexOf(p.id) !== -1) { switchProfile(pid); toast("✅ Ces résultats sont déjà récupérés."); return; }
+      var res = mergeImport(ts, p);
+      switchProfile(pid);
+      selectTab("hist");
+      toast("📥 Récupéré : " + res.ex + " exercice(s), " + res.ses + " séance(s) ✅");
+    };
+    var target = findProfile(p.s.p, p.s.n);
+    if (!store.active) {
+      ask({ title: "📥 Récupérer des résultats", text: who + " : " + desc + ". Créer ce profil sur cette tablette ?", yes: "Oui", go: true }, function () { doIt(target ? target.pid : null); });
+    } else if (target) {
+      ask({ title: "📥 Récupérer mes résultats", text: who + " : " + desc + ". Les ajouter " + (target.pid === store.active ? "à ton profil ?" : "au profil de " + target.s.prenom + " ?"),
+        foot: "Rien n'est effacé : les résultats sont ajoutés.", yes: "Oui, ajouter", go: true }, function () { doIt(target.pid); });
+    } else {
+      ask({ title: "⚠️ Ce ne sont pas tes résultats", text: "Ce sont les résultats de " + who + ", pas ceux de " + state.student.prenom + " " + state.student.nom + ". Créer un profil pour " + p.s.p + " sur cette tablette ?",
+        foot: "Si c'est bien toi (prénom écrit autrement), corrige d'abord ton prénom : 👤 Profil → ✏️ Corriger.", no: "Non", yes: "Oui, créer " + p.s.p }, function () { doIt(null); });
+    }
+    return true;
+  }
+
+  /* ---------- Envoyer ---------- */
+  function openXfer() {
+    if (state.run) { toast("Une séance Skill est en cours : arrête-la d'abord.", true); return; }
+    var q = xferQrPayload(), txt = asciiJson(q.p), box = $("xfer-qr");
+    box.innerHTML = "";
+    try { box.appendChild(qrImg(txt, 4, "L")); } catch (e) { box.textContent = "QR trop grand : utilise le fichier."; }
+    var n = q.p.h.length;
+    $("xfer-info").textContent = Object.keys(q.p.r).length + " exercice(s) testé(s) · " + n + " séance(s)" + (n < q.total ? " (les " + n + " plus récentes sur " + q.total + " ; le fichier contient tout)" : "");
+    $("xfer-delete").hidden = !isGuest();
+    openDialog("xfer");
+  }
+  function xferFile() {
+    var s = state.student;
+    var name = "CrossTraining_Transfert_" + fileSafe(s.prenom) + "_" + fileSafe(s.nom) + "_" + new Date().toISOString().slice(0, 10) + ".json";
+    var content = asciiJson(xferPayload(true));
+    try { return new File([content], name, { type: "application/json" }); }
+    catch (e) { var b = new Blob([content], { type: "application/json" }); b.name = name; return b; }
+  }
+  $("xfer-file").addEventListener("click", function () { download(xferFile()); toast("💾 Fichier enregistré dans Téléchargements."); });
+  $("xfer-share").addEventListener("click", function () {
+    var f = xferFile();
+    if (navigator.share && navigator.canShare && navigator.canShare({ files: [f] })) {
+      navigator.share({ files: [f], title: "Mes résultats Cross Training" }).catch(function (err) {
+        if (err && err.name !== "AbortError") toast("Partage impossible : utilise « Fichier ».", true);
+      });
+    } else { download(f); toast("Partage indisponible : fichier enregistré dans Téléchargements."); }
+  });
+  $("xfer-delete").addEventListener("click", function () {
+    closeDialog("xfer");
+    ask({ title: "🗑 Supprimer ton profil de cette tablette ?", text: "Vérifie d'abord que TA tablette affiche bien tes résultats (onglet Historique).", no: "Non", yes: "Oui, supprimer", danger: true }, function () {
+      var gone = store.active;
+      var next = profileList().filter(function (p) { return p.pid !== gone && !p.guest; })[0] || profileList().filter(function (p) { return p.pid !== gone; })[0];
+      delete store.profiles[gone];
+      if (next) { switchProfile(next.pid); toast("🗑 Profil supprimé. Retour à " + next.s.prenom); }
+      else { store.active = null; state = blankState(); try { localStorage.setItem(PKEY, JSON.stringify(store)); } catch (e) {} renderAll(); showIdentity("create"); toast("🗑 Profil supprimé"); }
+    });
+  });
+  $("guest-send").addEventListener("click", openXfer);
+  $("fin-xfer").addEventListener("click", openXfer);
+
+  /* ---------- Récupérer : scanner le QR ou ouvrir le fichier ---------- */
+  $("imp-file").addEventListener("click", function () { $("imp-input").value = ""; $("imp-input").click(); });
+  $("imp-input").addEventListener("change", function () {
+    var f = this.files && this.files[0];
+    if (!f) return;
+    var rd = new FileReader();
+    rd.onload = function () { closeDialog("imp"); handleImport(rd.result); };
+    rd.onerror = function () { toast("Lecture du fichier impossible.", true); };
+    rd.readAsText(f);
+  });
+  var scan = { stream: null, timer: null }, scanCanvas = document.createElement("canvas");
+  function loadJsQR(cb) {
+    if (window.jsQR) { cb(); return; }
+    var s = document.createElement("script");
+    s.src = "lib/jsQR.js";
+    s.onload = cb;
+    s.onerror = function () { toast("Scanner indisponible : utilise « Ouvrir le fichier ».", true); };
+    document.head.appendChild(s);
+  }
+  $("imp-scan").addEventListener("click", function () { closeDialog("imp"); loadJsQR(startScan); });
+  function startScan() {
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) { toast("Caméra indisponible : utilise « Ouvrir le fichier ».", true); return; }
+    $("scan").hidden = false;
+    document.body.style.overflow = "hidden";
+    $("scan-msg").textContent = "Autorise la caméra, puis vise le QR code de transfert.";
+    openLayer("scan", stopScan);
+    navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" }, audio: false }).then(function (st) {
+      if ($("scan").hidden) { st.getTracks().forEach(function (t) { t.stop(); }); return; }
+      scan.stream = st;
+      var v = $("scan-video");
+      v.srcObject = st;
+      var pl = v.play();
+      if (pl && pl.catch) pl.catch(function () {});
+      $("scan-msg").textContent = "Vise le QR code de transfert…";
+      scanLoop();
+    }).catch(function () {
+      $("scan-msg").textContent = "Caméra refusée : autorise-la (Réglages › Safari › Caméra) ou utilise « Ouvrir le fichier ».";
+    });
+  }
+  function scanLoop() {
+    if (!scan.stream) return;
+    var v = $("scan-video");
+    if (v.readyState >= 2 && v.videoWidth) {
+      var k = Math.min(1, 1280 / Math.max(v.videoWidth, v.videoHeight));
+      scanCanvas.width = Math.round(v.videoWidth * k);
+      scanCanvas.height = Math.round(v.videoHeight * k);
+      var ctx = scanCanvas.getContext("2d", { willReadFrequently: true });
+      ctx.drawImage(v, 0, 0, scanCanvas.width, scanCanvas.height);
+      var img = ctx.getImageData(0, 0, scanCanvas.width, scanCanvas.height);
+      var code = null;
+      try { code = window.jsQR(img.data, img.width, img.height, { inversionAttempts: "dontInvert" }); } catch (e) {}
+      if (code && code.data) {
+        if (code.data.indexOf('"CTX"') !== -1) {
+          var d = code.data;
+          if (!closeLayer("scan")) stopScan();
+          beep(880, 0.15, 1);
+          handleImport(d);
+          return;
+        }
+        $("scan-msg").textContent = "❌ Ce n'est pas le QR de transfert (celui-ci est peut-être pour le prof).";
+      }
+    }
+    scan.timer = setTimeout(scanLoop, 150);
+  }
+  function stopScan() {
+    clearTimeout(scan.timer);
+    if (scan.stream) scan.stream.getTracks().forEach(function (t) { t.stop(); });
+    scan.stream = null;
+    try { $("scan-video").srcObject = null; } catch (e) {}
+    $("scan").hidden = true;
+    document.body.style.overflow = "";
+  }
+  $("scan-close").addEventListener("click", function () { if (!closeLayer("scan")) stopScan(); });
+
+  /* =========================================================
    * Démarrage
    * ======================================================= */
   function renderAll() {
@@ -1186,10 +1822,18 @@
     renderSkill();
     updateCounts();
   }
+  // Profil invité oublié d'un autre jour : la tablette revient à son propriétaire
+  (function () {
+    if (!store.active || !isGuest() || state.run) return;
+    var last = state.seance.updatedAt || state.seance.startedAt;
+    if (last && new Date(last).toDateString() === new Date().toDateString()) return;
+    var owner = profileList().filter(function (p) { return !p.guest; })[0];
+    if (owner) { store.active = owner.pid; state = owner.st; persist(); }
+  })();
   if (state.run) { advance(); if (state.run) keepAwake(true); }
   renderAll();
-  if (state.student && state.student.prenom && state.student.nom && state.student.classe) showApp();
-  else showIdentity(false);
+  if (store.active && state.student && state.student.prenom) showApp();
+  else showIdentity("create");
 
   if ("serviceWorker" in navigator && (location.protocol === "https:" || location.hostname === "localhost")) {
     var hadController = !!navigator.serviceWorker.controller, reloaded = false;
@@ -1204,5 +1848,6 @@
     });
   }
 
-  window.CrossTraining = { state: function () { return state; }, buildPayload: buildPayload, qrText: qrText, carnetText: carnetText, normalizeClasse: normalizeClasse, advance: advance };
+  window.CrossTraining = { state: function () { return state; }, buildPayload: buildPayload, qrText: qrText, carnetText: carnetText, normalizeClasse: normalizeClasse, advance: advance,
+    store: function () { return store; }, xferText: function () { return asciiJson(xferQrPayload().p); }, xferFileText: function () { return asciiJson(xferPayload(true)); }, handleImport: handleImport };
 })();
