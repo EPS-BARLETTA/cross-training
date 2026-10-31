@@ -1,0 +1,271 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#0d1220">
+  <title>Cross Training</title>
+  <link rel="stylesheet" href="app.css">
+</head>
+<body>
+
+<!-- ============ IDENTIFICATION ============ -->
+<section id="screen-id" class="screen" hidden>
+  <div class="id-wrap">
+    <div class="brand-big">🏋️ Cross Training</div>
+    <p class="muted center">EPS · Lycée Vauban</p>
+    <form id="id-form" class="card" autocomplete="off">
+      <h1>Qui s'entraîne ?</h1>
+      <div class="id-grid">
+        <label class="field">Prénom de l'élève
+          <input id="id-prenom" required autocapitalize="words" placeholder="Léa">
+        </label>
+        <label class="field">Initiale du nom
+          <input id="id-nom" required maxlength="1" autocapitalize="characters" placeholder="D" class="initial">
+        </label>
+      </div>
+      <label class="field">Classe
+        <input id="id-classe" required autocapitalize="characters" placeholder="Ex. 4ème C, 2nde B, Terminale A">
+      </label>
+      <p id="id-classe-preview" class="classe-preview" aria-live="polite"></p>
+      <label class="field">Observateur <span class="muted small">(celui qui saisit les résultats)</span>
+        <input id="id-observer" autocapitalize="words" placeholder="Prénom du camarade ou « Prof »">
+      </label>
+      <button class="btn btn-go big full" type="submit">C'est parti →</button>
+      <button id="id-cancel" class="btn ghost full" type="button" hidden>Annuler</button>
+    </form>
+  </div>
+</section>
+
+<!-- ============ APPLICATION ============ -->
+<section id="screen-app" class="screen" hidden>
+  <header class="topbar">
+    <div class="who">
+      <span class="who-name" id="who-name"></span>
+      <span class="badge" id="who-classe"></span>
+      <span class="who-obs" id="who-obs"></span>
+    </div>
+    <div class="top-actions">
+      <button class="btn small btn-new" id="btn-new-top" type="button">🆕 Nouvelle séance</button>
+      <button class="btn small ghost" id="btn-change-id" type="button">👤 Changer</button>
+      <button class="btn small ghost" id="btn-help" type="button">❓ Aide</button>
+    </div>
+  </header>
+
+  <nav class="tabs" role="tablist">
+    <button class="tab t-train" data-tab="train" role="tab"><span>⏱️</span>Entraînement<b class="count" id="count-train"></b></button>
+    <button class="tab t-skill" data-tab="skill" role="tab"><span>🔥</span>Skill<b class="count" id="count-skill"></b></button>
+    <button class="tab t-fiches" data-tab="fiches" role="tab"><span>📄</span>Fiches</button>
+    <button class="tab t-fin" data-tab="fin" role="tab"><span>✅</span>Fin de séance</button>
+  </nav>
+
+  <main class="panels">
+    <div id="old-banner" class="old-banner" hidden>
+      <p id="old-banner-text"></p>
+      <div class="two">
+        <button class="btn btn-new" id="old-banner-new" type="button">🆕 Nouvelle séance</button>
+        <button class="btn ghost" id="old-banner-keep" type="button">Continuer cette séance</button>
+      </div>
+    </div>
+
+    <!-- ENTRAÎNEMENT -->
+    <section class="panel" data-panel="train">
+      <div class="card intro">
+        <p><strong>Test d'1 minute</strong> : touche un exercice, lance le chrono, fais le maximum de répétitions. Tes scores servent à fixer tes objectifs en Skill.</p>
+      </div>
+      <div class="chips-filter" id="train-filter"></div>
+      <div class="ex-grid" id="train-grid"></div>
+    </section>
+
+    <!-- SKILL -->
+    <section class="panel" data-panel="skill" hidden>
+      <!-- Configuration -->
+      <div id="skill-config">
+        <div class="card intro">
+          <p><strong>Skill</strong> : choisis 1 exercice par famille, son niveau et ton objectif de répétitions <em>par bloc</em>. Chaque bloc dure 2 minutes : circuit, puis récupération jusqu'à la fin des 2 minutes.</p>
+        </div>
+        <div class="fam-grid" id="skill-families"></div>
+        <div class="card">
+          <h2>Durée de la séance</h2>
+          <div class="seg seg-4" id="skill-duration">
+            <button type="button" data-min="6">6 min<small>3 blocs</small></button>
+            <button type="button" data-min="10">10 min<small>5 blocs</small></button>
+            <button type="button" data-min="16">16 min<small>8 blocs</small></button>
+            <button type="button" data-min="20">20 min<small>10 blocs</small></button>
+          </div>
+          <button class="btn btn-go big full" id="skill-start" type="button">▶️ Démarrer la séance</button>
+          <p class="hint" id="skill-config-hint"></p>
+        </div>
+        <div class="card" id="skill-last" hidden></div>
+      </div>
+
+      <!-- Séance en cours -->
+      <div id="skill-run" hidden>
+        <div class="run-head card" id="run-head">
+          <div class="run-phase" id="run-phase">TRAVAIL</div>
+          <div class="run-timer" id="run-timer">00:00</div>
+          <div class="run-sub"><span id="run-block">Bloc 1/5</span> · <span id="run-sub"></span></div>
+          <div class="run-bar"><i id="run-bar"></i></div>
+          <button class="btn big full" id="run-main" type="button">✋ Circuit terminé</button>
+          <p class="run-help" id="run-help"></p>
+        </div>
+        <div class="card">
+          <h2 id="run-inputs-title">Répétitions réalisées ce bloc</h2>
+          <div class="run-ex" id="run-ex"></div>
+        </div>
+        <div class="card">
+          <h2>Blocs enregistrés</h2>
+          <div id="run-log" class="log"></div>
+          <button class="btn danger full" id="run-stop" type="button">⏹ Arrêter la séance</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- FICHES -->
+    <section class="panel" data-panel="fiches" hidden>
+      <div class="chips-filter" id="fiches-filter"></div>
+      <div class="ex-grid" id="fiches-grid"></div>
+    </section>
+
+    <!-- FIN DE SÉANCE -->
+    <section class="panel" data-panel="fin" hidden>
+      <div class="card">
+        <h2>Récapitulatif de la séance</h2>
+        <div id="fin-recap" class="recap"></div>
+      </div>
+      <div class="card center">
+        <h2>QR code pour le prof</h2>
+        <div id="fin-qr" class="qr-box"></div>
+        <p class="muted small" id="fin-qr-info"></p>
+        <button class="btn btn-go big full" id="fin-fullscreen" type="button">🔍 Afficher en grand pour le scan</button>
+      </div>
+      <div class="card">
+        <h2>📒 Mon carnet de suivi</h2>
+        <p class="muted">Enregistre ta séance dans ton carnet d'entraînement.</p>
+        <button class="btn btn-carnet big full" id="fin-carnet" type="button">📒 Enregistrer dans mon carnet</button>
+      </div>
+      <div class="card">
+        <button class="btn btn-new big full" id="fin-new" type="button">🆕 Nouvelle séance</button>
+        <p class="muted small center">À faire à la fin, après le scan du prof et l'enregistrement dans le carnet.</p>
+      </div>
+    </section>
+  </main>
+  <footer class="foot">Cross Training - Equipe EPS Lycée Vauban - LUXEMBOURG - JB</footer>
+</section>
+
+<!-- ============ TEST 1 MINUTE ============ -->
+<div id="test" class="overlay" hidden>
+  <div class="overlay-bar">
+    <button class="btn ghost" id="test-close" type="button">← Retour</button>
+    <strong id="test-title"></strong>
+    <button class="btn ghost" id="test-fiche" type="button">📄 Fiche</button>
+  </div>
+  <div class="overlay-body test-body">
+    <div class="test-left">
+      <img id="test-img" alt="">
+    </div>
+    <div class="test-right">
+      <div class="card center">
+        <div class="test-timer" id="test-timer">01:00</div>
+        <div class="two">
+          <button class="btn btn-go big" id="test-start" type="button">▶️ Départ</button>
+          <button class="btn big" id="test-reset" type="button">↺ Remettre à 1:00</button>
+        </div>
+        <p class="muted small" id="test-timer-hint">Un bip retentit à la fin de la minute.</p>
+      </div>
+      <div class="card">
+        <h2>Répétitions en 1 minute</h2>
+        <label class="field" id="test-l1">N1
+          <input id="test-n1" type="number" inputmode="numeric" min="0" max="999">
+        </label>
+        <label class="field" id="test-l2">N2
+          <input id="test-n2" type="number" inputmode="numeric" min="0" max="999">
+        </label>
+        <p class="muted small" id="test-best"></p>
+        <button class="btn btn-go big full" id="test-save" type="button">💾 Enregistrer</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============ FICHE ============ -->
+<div id="fiche" class="overlay" hidden>
+  <div class="overlay-bar">
+    <button class="btn ghost" id="fiche-close" type="button">← Retour</button>
+    <strong id="fiche-title"></strong>
+    <button class="btn btn-go" id="fiche-test" type="button">⏱️ Tester</button>
+  </div>
+  <div class="overlay-body fiche-body">
+    <img id="fiche-img" alt="">
+    <div id="fiche-text"></div>
+  </div>
+</div>
+
+<!-- ============ QR PLEIN ÉCRAN ============ -->
+<div id="qr-full" class="qr-full" hidden>
+  <div class="qr-full-inner">
+    <div id="qr-full-code"></div>
+    <p id="qr-full-name"></p>
+    <p class="small">Monte la luminosité de l'écran si le scan ne passe pas.</p>
+    <button class="btn big" id="qr-full-close" type="button">✕ Fermer</button>
+  </div>
+</div>
+
+<!-- ============ DIALOGUE GÉNÉRIQUE ============ -->
+<dialog id="ask" class="dlg">
+  <form method="dialog" class="dlg-panel">
+    <h2 id="ask-title"></h2>
+    <p class="big-q" id="ask-text"></p>
+    <ul class="remind" id="ask-remind" hidden></ul>
+    <div class="two">
+      <button type="button" class="btn big" id="ask-no">Non</button>
+      <button type="button" class="btn big" id="ask-yes">Oui</button>
+    </div>
+    <p class="muted small center" id="ask-foot"></p>
+  </form>
+</dialog>
+
+<!-- ============ CARNET ============ -->
+<dialog id="carnet" class="dlg">
+  <form method="dialog" class="dlg-panel">
+    <h2>📒 Mon carnet de suivi</h2>
+    <p class="muted">Choisis selon la tablette utilisée.</p>
+    <button type="button" class="choice" id="carnet-open">
+      <strong>📱 J'ai ma tablette</strong>
+      <span>Mes résultats sont copiés, puis mon carnet s'ouvre : je les colle dans ma séance.</span>
+    </button>
+    <button type="button" class="choice" id="carnet-file">
+      <strong>💾 Je n'ai pas ma tablette</strong>
+      <span>J'enregistre un fichier à importer plus tard dans mon carnet (bouton « Importer »).</span>
+    </button>
+    <button type="button" class="choice" id="carnet-share">
+      <strong>📤 Envoyer le fichier</strong>
+      <span>AirDrop, Messages, mail… vers ma propre tablette.</span>
+    </button>
+    <details class="preview"><summary>Voir ce qui sera enregistré</summary><pre id="carnet-preview"></pre></details>
+    <button value="cancel" class="btn ghost full">Fermer</button>
+  </form>
+</dialog>
+
+<!-- ============ AIDE ============ -->
+<dialog id="help" class="dlg">
+  <form method="dialog" class="dlg-panel">
+    <h2>❓ Comment ça marche</h2>
+    <ol class="help">
+      <li><strong>⏱️ Entraînement</strong> : touche un exercice → Départ → 1 minute → note les répétitions (N1 et/ou N2) → Enregistrer.</li>
+      <li><strong>🔥 Skill</strong> : choisis 1 exercice par famille, son niveau, l'objectif par bloc et la durée → Démarrer. Pendant chaque bloc de 2 min : fais le circuit, touche « Circuit terminé », puis l'observateur note les répétitions pendant la récupération. Le bloc suivant démarre tout seul.</li>
+      <li><strong>📄 Fiches</strong> : critères de réalisation, sécurité, muscles, étirements.</li>
+      <li><strong>✅ Fin de séance</strong> : montre le QR au prof, puis enregistre dans ton carnet.</li>
+    </ol>
+    <p class="muted small">Tout est enregistré automatiquement. Même si la page se recharge pendant un bloc, la séance reprend où elle en était.</p>
+    <button value="cancel" class="btn btn-go full">J'ai compris</button>
+  </form>
+</dialog>
+
+<div id="toast" class="toast" role="status" aria-live="polite"></div>
+
+<script src="lib/qrcode.js"></script>
+<script src="data.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
