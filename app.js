@@ -1984,7 +1984,7 @@
     } else { download(f); markBackup(); toast("💾 Sauvegarde enregistrée dans Téléchargements (app Fichiers)."); }
   }
   function renderCoverExtras() {
-    $("cover-install").hidden = isInstalled();
+    // toujours proposé (replié) : depuis « Mes outils », l'iPhone se dit « installé » alors que l'appli ne l'est pas
     var known = !!(store.active && state.student && state.student.prenom);
     var nb = known && needsBackup();
     $("cover-backup").hidden = !nb;
