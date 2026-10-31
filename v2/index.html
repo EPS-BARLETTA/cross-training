@@ -56,6 +56,7 @@
     <button class="tab t-train" data-tab="train" role="tab"><span>⏱️</span>Entraînement<b class="count" id="count-train"></b></button>
     <button class="tab t-skill" data-tab="skill" role="tab"><span>🔥</span>Skill<b class="count" id="count-skill"></b></button>
     <button class="tab t-fiches" data-tab="fiches" role="tab"><span>📄</span>Fiches</button>
+    <button class="tab t-hist" data-tab="hist" role="tab"><span>📈</span>Historique</button>
     <button class="tab t-fin" data-tab="fin" role="tab"><span>✅</span>Fin de séance</button>
   </nav>
 
@@ -125,6 +126,19 @@
     <section class="panel" data-panel="fiches" hidden>
       <div class="chips-filter" id="fiches-filter"></div>
       <div class="ex-grid" id="fiches-grid"></div>
+    </section>
+
+    <!-- HISTORIQUE -->
+    <section class="panel" data-panel="hist" hidden>
+      <div class="card">
+        <h2>📚 Catalogue de <span id="hist-name"></span></h2>
+        <p class="muted small">Meilleur score en 1 minute pour chaque exercice testé, et sa progression test après test.</p>
+        <div id="hist-catalogue"></div>
+      </div>
+      <div class="card">
+        <h2>🗓️ Séances</h2>
+        <div id="hist-seances" class="hist-list"></div>
+      </div>
     </section>
 
     <!-- FIN DE SÉANCE -->

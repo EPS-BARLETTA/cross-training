@@ -231,7 +231,7 @@
     var s = state.student;
     var changed = s && (s.prenom.toLowerCase() !== prenom.toLowerCase() || s.nom !== nom);
     var apply = function (reset) {
-      if (reset) { stopRunSilently(); state.seance = newSeance(); state.records = {}; state.cfg = emptyCfg(); }
+      if (reset) { stopRunSilently(); state.seance = newSeance(); state.records = {}; state.cfg = emptyCfg(); state.history = []; }
       state.student = { prenom: prenom, nom: nom, classe: classe, classeSaisie: classeSaisie, observer: observer };
       save();
       renderAll();
@@ -239,8 +239,8 @@
     };
     var hasData = !seanceEmpty() || Object.keys(state.records).length;
     if (changed && hasData) {
-      ask({ title: "👤 Autre élève", text: "Cette tablette contient la séance et le catalogue de " + s.prenom + " " + s.nom + ". Passer à " + prenom + " " + nom + ". ?",
-        foot: "La séance et le catalogue de " + s.prenom + " seront effacés de cette tablette (fais scanner son QR avant).", yes: "Oui, changer d'élève", danger: true }, function () { apply(true); });
+      ask({ title: "👤 Autre élève", text: "Cette tablette contient la séance, le catalogue et l'historique de " + s.prenom + " " + s.nom + ". Passer à " + prenom + " " + nom + ". ?",
+        foot: "La séance, le catalogue et l'historique de " + s.prenom + " seront effacés de cette tablette (fais scanner son QR avant).", yes: "Oui, changer d'élève", danger: true }, function () { apply(true); });
       return;
     }
     if (changed) { apply(true); return; }
@@ -262,7 +262,7 @@
   /* =========================================================
    * Onglets
    * ======================================================= */
-  var PANELS = { train: 1, skill: 1, fiches: 1, fin: 1 };
+  var PANELS = { train: 1, skill: 1, fiches: 1, hist: 1, fin: 1 };
   function selectTab(tab) {
     if (!PANELS[tab]) tab = "train";
     state.tab = tab;
@@ -270,6 +270,7 @@
     document.querySelectorAll(".panel").forEach(function (p) { p.hidden = p.dataset.panel !== tab; });
     if (history.replaceState) history.replaceState(null, "", "#" + tab);
     if (tab === "fin") renderFin();
+    if (tab === "hist") renderHistory();
     if (tab === "skill") renderSkill();
     try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) {}
     window.scrollTo(0, 0);
@@ -401,6 +402,10 @@
     if (n1 != null) { t.n1 = t.n1 == null ? n1 : Math.max(t.n1, n1); r.n1 = r.n1 == null ? n1 : Math.max(r.n1, n1); }
     if (n2 != null) { t.n2 = t.n2 == null ? n2 : Math.max(t.n2, n2); r.n2 = r.n2 == null ? n2 : Math.max(r.n2, n2); }
     t.at = new Date().toISOString();
+    r.lastAt = t.at;
+    r.tests = r.tests || [];
+    r.tests.push({ at: t.at, n1: n1, n2: n2 });
+    if (r.tests.length > 30) r.tests = r.tests.slice(-30);
     state.seance.tests[id] = t;
     state.records[id] = r;
     save();
@@ -849,6 +854,54 @@
   });
 
   /* =========================================================
+   * HISTORIQUE
+   * ======================================================= */
+  function dayFr(iso) {
+    try { var t = new Date(iso).toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long", year: "numeric" }); return t.charAt(0).toUpperCase() + t.slice(1); }
+    catch (e) { return ""; }
+  }
+  function shortDate(iso) { try { return new Date(iso).toLocaleDateString("fr-FR", { day: "2-digit", month: "2-digit" }); } catch (e) { return ""; } }
+  function seanceCard(se, today) {
+    var h = '<div class="hist-item' + (today ? " today" : "") + '"><h3>' + (today ? "Aujourd'hui (séance en cours)" : esc(dayFr(se.date))) + "</h3>";
+    var ids = EXO_ORDER.filter(function (id) { return se.tests && se.tests[id]; });
+    if (ids.length) {
+      h += '<p class="lbl">⏱️ Tests 1 min</p>' + ids.map(function (id) { return "<p>" + esc(EX[id].name) + " : " + esc(bestTxt(se.tests[id])) + "</p>"; }).join("");
+    }
+    if (se.skill) {
+      var tot = skillTotals(se.skill);
+      h += '<p class="lbl">🔥 Skill — ' + se.skill.blocks.length + " bloc(s)" + (se.skill.stoppedEarly ? " (arrêtée)" : "") + "</p>" +
+        FAMILIES.map(function (f) { var t = tot[f.id]; return "<p>" + esc(EX[t.id].name) + " (N" + t.level + ") : <b>" + t.done + "</b> / " + t.expected + "</p>"; }).join("");
+    }
+    if (!ids.length && !se.skill) h += '<p class="muted">Rien d\'enregistré pour l\'instant.</p>';
+    return h + "</div>";
+  }
+  function renderHistory() {
+    var s = state.student;
+    $("hist-name").textContent = s ? s.prenom + " " + s.nom + "." : "";
+    var ids = EXO_ORDER.filter(function (id) { var r = state.records[id]; return r && (r.n1 != null || r.n2 != null); });
+    if (!ids.length) {
+      $("hist-catalogue").innerHTML = '<p class="muted">Aucun exercice testé pour l\'instant : va dans Entraînement.</p>';
+    } else {
+      $("hist-catalogue").innerHTML = '<table class="cat-table"><tr><th></th><th>Exercice</th><th>N1</th><th>N2</th><th>Dernier test</th></tr>' +
+        ids.map(function (id) {
+          var r = state.records[id], e = EX[id];
+          var prog = function (k) {
+            var seq = (r.tests || []).map(function (t) { return t[k]; }).filter(function (v) { return v != null; });
+            return seq.length > 1 ? '<span class="prog">' + seq.slice(-5).join(" → ") + "</span>" : "";
+          };
+          return '<tr><td class="fam" style="background:var(--' + e.family + ')"></td><td>' + esc(e.name) + "</td>" +
+            "<td><b>" + (r.n1 != null ? r.n1 : "—") + "</b>" + prog("n1") + "</td><td><b>" + (r.n2 != null ? r.n2 : "—") + "</b>" + prog("n2") + "</td>" +
+            "<td class=\"muted\">" + (r.lastAt ? esc(shortDate(r.lastAt)) : "—") + "</td></tr>";
+        }).join("") + "</table>";
+    }
+    var list = [];
+    list.push(seanceCard({ tests: state.seance.tests, skill: state.seance.skill }, true));
+    (state.history || []).forEach(function (se) { list.push(seanceCard(se, false)); });
+    if (!(state.history || []).length) list.push('<p class="muted small">Les séances précédentes apparaîtront ici après chaque « Nouvelle séance ».</p>');
+    $("hist-seances").innerHTML = list.join("");
+  }
+
+  /* =========================================================
    * QR (format ScanProf de la v1, texte ASCII pour protéger les accents)
    * ======================================================= */
   function code(id) { return EXO_CODES[id]; }
@@ -1035,8 +1088,16 @@
     if (state.run) p.push("1 séance Skill en cours");
     return p.join(", ");
   }
+  function archiveSeance() {
+    var se = state.seance;
+    if (!Object.keys(se.tests).length && !se.skill) return;
+    state.history = state.history || [];
+    state.history.unshift({ id: se.id, date: se.updatedAt || se.startedAt, tests: se.tests, skill: se.skill });
+    if (state.history.length > 40) state.history = state.history.slice(0, 40);
+  }
   function startNewSeance() {
     stopRunSilently();
+    archiveSeance();
     state.seance = newSeance();
     save();
     $("old-banner").hidden = true;
@@ -1046,6 +1107,7 @@
   }
   function askNewSeance() {
     if (seanceEmpty()) { state.seance = newSeance(); save(); $("old-banner").hidden = true; toast("La séance est déjà vide : tu peux commencer."); return; }
+    // (la séance est archivée dans l'Historique avant d'être effacée)
     ask({ title: "🆕 Nouvelle séance", text: "Effacer cette séance ?", foot: "(" + summary() + ")", yes: "Oui" }, function () {
       var s = state.seance;
       setTimeout(function () {
@@ -1057,7 +1119,7 @@
             { ok: !!s.carnetAt, text: s.carnetAt ? "✅ Carnet enregistré à " + timeFr(s.carnetAt) : "⚠️ Carnet : pas encore enregistré sur cette tablette" },
           ],
           no: "Non, revenir", yes: "Oui, tout effacer", danger: true,
-          foot: "Les records d'entraînement sont conservés.",
+          foot: "Elle reste consultable dans l'onglet Historique. Le catalogue est conservé.",
         }, startNewSeance);
         // « Non, revenir » → aller sur Fin de séance
         askNoGoesToFin = true;
