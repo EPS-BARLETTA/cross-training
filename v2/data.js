@@ -69,7 +69,7 @@
       ],
     },
     {
-      id: "patineurs", name: "Patineurs", family: "cardio", image: null,
+      id: "patineurs", name: "Patineurs", family: "cardio", image: "img/patineurs.jpg",
       levels: [
         { n: 1, label: "Pas chassés", expected: 24, tips: ["Grand pas sur le côté, sans saut.", "Toucher le sol derrière avec la pointe du pied libre."] },
         { n: 2, label: "Sautés", expected: 30, tips: ["Sauter d'un pied sur l'autre.", "Le pied libre ne touche pas le sol."] },
@@ -77,7 +77,7 @@
       ],
     },
     {
-      id: "marche-ours", name: "Marche de l'ours", family: "cardio", image: null,
+      id: "marche-ours", name: "Marche de l'ours", family: "cardio", image: "img/marche-ours.jpg",
       levels: [
         { n: 1, label: "Sur place", expected: 30, tips: ["Genoux décollés de quelques centimètres.", "Lever une main et le pied opposé, puis l'inverse.", "1 pas = 1 répétition."] },
         { n: 2, label: "Avant-arrière", expected: 24, tips: ["4 pas en avant, 4 pas en arrière.", "Genoux toujours décollés.", "1 pas = 1 répétition."] },
@@ -110,28 +110,28 @@
       ],
     },
     {
-      id: "pompes-spiderman", name: "Pompes spiderman", family: "haut", image: null,
+      id: "pompes-spiderman", name: "Pompes spiderman", family: "haut", image: "img/pompes-spiderman.jpg",
       levels: [
         { n: 1, label: "Sur genoux", expected: 10, tips: ["Pompe sur les genoux.", "Après chaque pompe, ramener un genou vers le coude du même côté."] },
         { n: 2, label: "Complètes", expected: 10, tips: ["Pompe sur les pieds.", "Pendant la descente, genou vers le coude du même côté.", "Alterner droite / gauche."] },
       ],
     },
     {
-      id: "pompes-piquees", name: "Pompes piquées", family: "haut", image: null,
+      id: "pompes-piquees", name: "Pompes piquées", family: "haut", image: "img/pompes-piquees.jpg",
       levels: [
         { n: 1, label: "Pieds au sol", expected: 10, tips: ["Position en « V » inversé.", "Tête vers le sol entre les mains."] },
         { n: 2, label: "Pieds surélevés", expected: 8, tips: ["Pieds sur un banc, corps plus vertical.", "Descente lente."] },
       ],
     },
     {
-      id: "inchworms", name: "Inchworms", family: "haut", image: null,
+      id: "inchworms", name: "Inchworms", family: "haut", image: "img/inchworms.jpg",
       levels: [
         { n: 1, label: "Sans pompe", expected: 8, tips: ["Marcher avec les mains jusqu'à la planche, puis revenir.", "1 aller-retour = 1 répétition."] },
         { n: 2, label: "Avec 1 pompe", expected: 6, tips: ["Une pompe complète en position de planche.", "1 aller-retour = 1 répétition."] },
       ],
     },
     {
-      id: "planche-dynamique", name: "Planche dynamique", family: "haut", image: null,
+      id: "planche-dynamique", name: "Planche dynamique", family: "haut", image: "img/planche-dynamique.jpg",
       levels: [
         { n: 1, label: "Sur genoux", expected: 12, tips: ["Genoux au sol.", "Passer des avant-bras aux mains, puis revenir."] },
         { n: 2, label: "Complète", expected: 10, tips: ["Sur les pieds, corps gainé.", "Changer de bras de départ à chaque répétition."] },
@@ -164,28 +164,28 @@
       ],
     },
     {
-      id: "fentes-laterales", name: "Fentes latérales", family: "bas", image: null,
+      id: "fentes-laterales", name: "Fentes latérales", family: "bas", image: "img/fentes-laterales.jpg",
       levels: [
         { n: 1, label: "Amplitude réduite", expected: 16, tips: ["Petit pas sur le côté.", "Descente partielle."] },
         { n: 2, label: "Complètes", expected: 20, tips: ["Grand pas sur le côté.", "Cuisse fléchie proche de l'horizontale."] },
       ],
     },
     {
-      id: "squats-sumo", name: "Squats sumo", family: "bas", image: null,
+      id: "squats-sumo", name: "Squats sumo", family: "bas", image: "img/squats-sumo.jpg",
       levels: [
         { n: 1, label: "Classique", expected: 18, tips: ["Pieds très écartés, pointes vers l'extérieur.", "Descente contrôlée."] },
         { n: 2, label: "Sautés", expected: 14, tips: ["Squat sumo, puis saut vers le haut.", "Réception amortie pieds écartés."] },
       ],
     },
     {
-      id: "fire-hydrants", name: "Fire hydrants", family: "bas", image: null,
+      id: "fire-hydrants", name: "Fire hydrants", family: "bas", image: "img/fire-hydrants.jpg",
       levels: [
         { n: 1, label: "Classique", expected: 24, tips: ["Lever le genou sur le côté jusqu'à la hauteur de la hanche.", "Changer de côté à mi-temps."] },
         { n: 2, label: "Pause 1 seconde en haut", expected: 18, tips: ["Tenir 1 seconde genou levé.", "Changer de côté à mi-temps."] },
       ],
     },
     {
-      id: "mollets", name: "Extensions des mollets", family: "bas", image: null,
+      id: "mollets", name: "Extensions des mollets", family: "bas", image: "img/mollets.jpg",
       levels: [
         { n: 1, label: "2 pieds", expected: 30, tips: ["Monter sur la pointe des pieds, redescendre lentement."] },
         { n: 2, label: "1 pied", expected: 20, tips: ["Sur un seul pied, la main contre le mur.", "Changer de pied à mi-temps."] },
@@ -219,28 +219,28 @@
       ],
     },
     {
-      id: "v-ups", name: "V-ups", family: "gainage", image: null,
+      id: "v-ups", name: "V-ups", family: "gainage", image: "img/v-ups.jpg",
       levels: [
         { n: 1, label: "Alternés", expected: 16, tips: ["Monter le buste et une seule jambe tendue.", "Alterner les jambes."] },
         { n: 2, label: "Complets", expected: 12, tips: ["Monter le buste et les deux jambes en même temps.", "Toucher les pieds en haut."] },
       ],
     },
     {
-      id: "superman", name: "Superman", family: "gainage", image: null,
+      id: "superman", name: "Superman", family: "gainage", image: "img/superman.jpg",
       levels: [
         { n: 1, label: "Bras ou jambes", expected: 20, tips: ["Alterner : décoller les bras, puis les jambes."] },
         { n: 2, label: "Bras et jambes", expected: 16, tips: ["Décoller bras et jambes en même temps.", "Tenir 1 seconde en haut."] },
       ],
     },
     {
-      id: "bicyclette", name: "Abdos bicyclette", family: "gainage", image: null,
+      id: "bicyclette", name: "Abdos bicyclette", family: "gainage", image: "img/bicyclette.jpg",
       levels: [
         { n: 1, label: "Lents", expected: 20, tips: ["Pause d'une seconde à chaque rotation."] },
         { n: 2, label: "Rapides", expected: 30, tips: ["Rythme rapide, sans perdre le contrôle."] },
       ],
     },
     {
-      id: "planche-twist", name: "Planche twist", family: "gainage", image: null,
+      id: "planche-twist", name: "Planche twist", family: "gainage", image: "img/planche-twist.jpg",
       levels: [
         { n: 1, label: "Sur genoux", expected: 20, tips: ["Planche sur les avant-bras, genoux au sol.", "Pivoter le bassin d'un côté puis de l'autre."] },
         { n: 2, label: "Complète", expected: 24, tips: ["Planche sur les avant-bras et les pieds.", "Hanche vers le sol sans le toucher."] },

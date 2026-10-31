@@ -1,11 +1,14 @@
 /* Cross Training v2 — mode hors-ligne (réseau d'abord, sinon cache).
  * Augmenter VERSION à chaque mise en ligne. */
-const VERSION = "crosstraining-v2-2026-10-31d";
+const VERSION = "crosstraining-v2-2026-10-31e";
 const PREFIX = "crosstraining-v2-";
 const FILES = ["./", "index.html", "app.css", "app.js", "data.js", "lib/qrcode.js",
   "img/burpees.jpg", "img/crunch.jpg", "img/dips.jpg", "img/fentes.jpg", "img/jumping-jack.jpg", "img/mountain.jpg",
   "img/planche-touches-epaule.jpg", "img/pompe-diamant.jpg", "img/pompes.jpg", "img/pont-fessier.jpg", "img/rameur.jpg",
-  "img/saut.jpg", "img/squat.jpg", "img/talons-fesses.jpg"];
+  "img/saut.jpg", "img/squat.jpg", "img/talons-fesses.jpg",
+  "img/patineurs.jpg", "img/marche-ours.jpg", "img/pompes-spiderman.jpg", "img/pompes-piquees.jpg", "img/inchworms.jpg",
+  "img/planche-dynamique.jpg", "img/fentes-laterales.jpg", "img/squats-sumo.jpg", "img/fire-hydrants.jpg", "img/mollets.jpg",
+  "img/v-ups.jpg", "img/superman.jpg", "img/bicyclette.jpg", "img/planche-twist.jpg"];
 
 self.addEventListener("install", (event) => {
   event.waitUntil(
