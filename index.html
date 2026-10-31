@@ -5,6 +5,12 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="theme-color" content="#0d1220">
   <title>Cross Training</title>
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="Cross Training">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <link rel="stylesheet" href="app.css">
 </head>
 <body>
@@ -23,6 +29,20 @@
         <button class="btn ghost" id="cover-switch" type="button">👤 Ce n'est pas moi</button>
         <button class="btn ghost" id="cover-help" type="button">❓ Comment ça marche</button>
       </div>
+      <div id="cover-backup" class="cover-backup" hidden>
+        <p id="cover-backup-text"></p>
+        <button class="btn full" id="cover-backup-btn" type="button">💾 Sauvegarder maintenant</button>
+      </div>
+    </div>
+    <div id="cover-install" class="cover-install" hidden>
+      <p class="ci-title">📲 Installe Cross Training sur ton écran d'accueil</p>
+      <p class="ci-why">Sinon, Safari peut effacer tes résultats si tu ne viens pas pendant quelques jours.</p>
+      <ol class="ci-steps">
+        <li><span class="ci-ico">⬆️</span><span>Touche <b>Partager</b><small>en haut de Safari (ou dans le menu ⋯)</small></span></li>
+        <li><span class="ci-ico">➕</span><span><b>Sur l'écran d'accueil</b><small>descends un peu dans la liste</small></span></li>
+        <li><span class="ci-ico">🏋️</span><span>Touche <b>Ajouter</b><small>puis ouvre toujours l'appli avec cette icône</small></span></li>
+      </ol>
+      <p class="ci-note">Tu as déjà des résultats ici ? Avant, fais 👤 Profil → 💾 Sauvegarder. Dans l'appli installée : 📂 Restaurer.</p>
     </div>
   </div>
   <footer class="foot">Cross Training - Equipe EPS Lycée Vauban - LUXEMBOURG - JB</footer>
@@ -57,7 +77,7 @@
       </label>
       <button class="btn btn-go big full" id="id-submit" type="submit">C'est parti →</button>
       <button id="id-cancel" class="btn ghost full" type="button" hidden>Annuler</button>
-      <button id="id-import" class="btn ghost full small" type="button">📥 J'ai déjà des résultats sur une autre tablette</button>
+      <button id="id-import" class="btn ghost full small" type="button">📂 J'ai une sauvegarde ou des résultats d'une autre tablette</button>
     </form>
   </div>
 </section>
@@ -317,6 +337,10 @@
     <button type="button" class="choice" id="pr-add"><strong>➕ Un autre élève utilise cette tablette</strong><span>Il a son propre profil : les résultats de chacun sont gardés.</span></button>
     <button type="button" class="choice" id="pr-send"><strong>📤 Envoyer mes résultats vers ma tablette</strong><span>J'ai utilisé la tablette d'un camarade.</span></button>
     <button type="button" class="choice" id="pr-get"><strong>📥 Récupérer mes résultats</strong><span>Faits sur une autre tablette : je scanne son QR ou j'ouvre le fichier.</span></button>
+    <div class="two pr-save">
+      <button type="button" class="choice" id="pr-save"><strong>💾 Sauvegarder</strong><span>Un fichier dans « Fichiers » : rien ne se perd.</span></button>
+      <button type="button" class="choice" id="pr-restore"><strong>📂 Restaurer</strong><span>Remettre mes résultats depuis une sauvegarde.</span></button>
+    </div>
     <button value="cancel" class="btn ghost full">Fermer</button>
   </form>
 </dialog>

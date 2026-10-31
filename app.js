@@ -1674,6 +1674,7 @@
     if (!p || p.t !== "CTX" || !p.s || !p.s.p || !p.id) { toast("Ce n'est pas un transfert Cross Training.", true); return false; }
     if (state.run) { toast("Une séance Skill est en cours : arrête-la d'abord.", true); return false; }
     var who = p.s.p + " " + p.s.n + ". (" + p.s.c + ")";
+    var isSave = p.k === "save";
     var desc = Object.keys(p.r || {}).length + " exercice(s) testé(s), " + (p.h || []).length + " séance(s)";
     var doIt = function (pid) {
       if (!pid) {
@@ -1691,9 +1692,9 @@
     };
     var target = findProfile(p.s.p, p.s.n);
     if (!store.active) {
-      ask({ title: "📥 Récupérer des résultats", text: who + " : " + desc + ". Créer ce profil sur cette tablette ?", yes: "Oui", go: true }, function () { doIt(target ? target.pid : null); });
+      ask({ title: isSave ? "📂 Restaurer la sauvegarde" : "📥 Récupérer des résultats", text: who + " : " + desc + ". Créer ce profil sur cette tablette ?", yes: "Oui", go: true }, function () { doIt(target ? target.pid : null); });
     } else if (target) {
-      ask({ title: "📥 Récupérer mes résultats", text: who + " : " + desc + ". Les ajouter " + (target.pid === store.active ? "à ton profil ?" : "au profil de " + target.s.prenom + " ?"),
+      ask({ title: isSave ? "📂 Restaurer la sauvegarde" : "📥 Récupérer mes résultats", text: who + " : " + desc + ". Les ajouter " + (target.pid === store.active ? "à ton profil ?" : "au profil de " + target.s.prenom + " ?"),
         foot: "Rien n'est effacé : les résultats sont ajoutés.", yes: "Oui, ajouter", go: true }, function () { doIt(target.pid); });
     } else {
       ask({ title: "⚠️ Ce ne sont pas tes résultats", text: "Ce sont les résultats de " + who + ", pas ceux de " + state.student.prenom + " " + state.student.nom + ". Créer un profil pour " + p.s.p + " sur cette tablette ?",
@@ -1880,6 +1881,14 @@
           '<div class="g-tab mine"><p class="g-cap">Ta tablette</p>' + stepList([mk("", "👤 Profil"), mk("", "📥 Récupérer mes résultats"), mk("", "📷 Scanner") + " le QR"]) + "</div></div>" +
           '<p class="g-tip">Tes résultats s\'ajoutent à ton catalogue. Rien n\'est effacé.</p>';
       } },
+    { ico: "📲", col: "#fbbf24", title: function () { return "Protège tes résultats"; },
+      body: function () {
+        return '<p class="g-lead">Safari peut effacer tes résultats si tu ne viens pas pendant quelques jours (vacances…).</p>' +
+          '<div class="g-two"><div class="g-tab mine"><p class="g-cap">📲 Installe l\'appli</p>' + stepList(["Touche " + mk("", "⬆️ Partager") + " dans Safari", mk("", "➕ Sur l'écran d'accueil"), mk("go", "Ajouter") + " puis ouvre toujours l'appli avec l'icône 🏋️"]) + "</div>" +
+          '<div class="g-arrow"><i>+</i></div>' +
+          '<div class="g-tab mine"><p class="g-cap">💾 Sauvegarde</p>' + stepList([mk("", "👤 Profil"), mk("", "💾 Sauvegarder"), "« Enregistrer dans Fichiers »"]) + "</div></div>" +
+          '<p class="g-tip">Avant les vacances : <b>💾 Sauvegarder</b>. Si tout a disparu : à l\'inscription, touche <b>📂 J\'ai une sauvegarde</b>.</p>';
+      } },
     { ico: "🚀", col: "#34d399", title: function () { return "À toi de jouer !"; },
       body: function () {
         return '<div class="g-recap"><p>⏱️ <b>Teste</b> des exercices</p><p>🔥 <b>Construis</b> ton Skill</p><p>✅ <b>QR</b> au prof + <b>carnet</b></p></div>' +
@@ -1930,6 +1939,62 @@
   $("btn-help").addEventListener("click", openGuide);
 
   /* =========================================================
+   * PROTÉGER LES DONNÉES : appli installée, stockage protégé, sauvegarde
+   * ======================================================= */
+  function isInstalled() {
+    try { return window.navigator.standalone === true || window.matchMedia("(display-mode: standalone)").matches; } catch (e) { return false; }
+  }
+  try {
+    if (navigator.storage && navigator.storage.persist) {
+      navigator.storage.persisted().then(function (ok) { if (!ok) return navigator.storage.persist(); }).catch(function () {});
+    }
+  } catch (e) {}
+  var BACKUP_DAYS = 7;
+  function backupAge() {
+    if (!state.backupAt) return null;
+    return Math.floor((Date.now() - new Date(state.backupAt).getTime()) / 86400000);
+  }
+  function needsBackup() {
+    if (!store.active || !Object.keys(state.records).length) return false;
+    var a = backupAge();
+    return a == null || a >= BACKUP_DAYS;
+  }
+  function backupFile() {
+    var s = state.student, p = xferPayload(true);
+    p.k = "save";
+    var name = "CrossTraining_Sauvegarde_" + fileSafe(s.prenom) + "_" + fileSafe(s.nom) + "_" + new Date().toISOString().slice(0, 10) + ".json";
+    var content = asciiJson(p);
+    try { return new File([content], name, { type: "application/json" }); }
+    catch (e) { var b = new Blob([content], { type: "application/json" }); b.name = name; return b; }
+  }
+  function markBackup() { state.backupAt = new Date().toISOString(); persist(); renderCoverExtras(); }
+  function backupNow() {
+    if (!store.active) return;
+    var f = backupFile();
+    if (navigator.share && navigator.canShare && navigator.canShare({ files: [f] })) {
+      toast("Choisis « Enregistrer dans Fichiers » 📁");
+      navigator.share({ files: [f], title: "Sauvegarde Cross Training" }).then(function () {
+        markBackup(); toast("💾 Sauvegarde faite !");
+      }).catch(function (err) {
+        if (err && err.name !== "AbortError") { download(f); markBackup(); toast("💾 Sauvegarde enregistrée dans Téléchargements."); }
+      });
+    } else { download(f); markBackup(); toast("💾 Sauvegarde enregistrée dans Téléchargements (app Fichiers)."); }
+  }
+  function renderCoverExtras() {
+    var known = !!(store.active && state.student && state.student.prenom);
+    $("cover-install").hidden = isInstalled();
+    var nb = known && needsBackup();
+    $("cover-backup").hidden = !nb;
+    if (nb) {
+      var a = backupAge();
+      $("cover-backup-text").textContent = a == null ? "💾 Tu n'as jamais sauvegardé tes résultats." : "💾 Dernière sauvegarde il y a " + a + " jours.";
+    }
+  }
+  $("cover-backup-btn").addEventListener("click", backupNow);
+  $("pr-save").addEventListener("click", function () { closeDialog("profile"); backupNow(); });
+  $("pr-restore").addEventListener("click", function () { closeDialog("profile"); $("imp-input").value = ""; $("imp-input").click(); });
+
+  /* =========================================================
    * PAGE DE GARDE : affichée à chaque ouverture de l'appli
    * ======================================================= */
   var firstOpen = true;
@@ -1949,6 +2014,7 @@
     $("cover-info").textContent = info;
     $("cover-go").textContent = !known ? "▶️ Commencer" : state.run ? "🔥 Reprendre ma séance Skill" : "▶️ Continuer";
     $("cover-switch").hidden = !known;
+    renderCoverExtras();
     window.scrollTo(0, 0);
   }
   $("cover-go").addEventListener("click", function () {
