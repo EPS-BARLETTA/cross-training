@@ -1454,15 +1454,41 @@
   }
   function markCarnet() { state.seance.carnetAt = new Date().toISOString(); save(); }
   $("fin-carnet").addEventListener("click", function () { $("carnet-preview").textContent = carnetText(); openDialog("carnet"); });
+  /* Copie synchrone (fiable sur iPad/Safari tant que la page a le focus). */
+  function copySync(text) {
+    var ta = document.createElement("textarea");
+    ta.value = text;
+    ta.setAttribute("readonly", "");
+    ta.style.cssText = "position:fixed;top:0;left:0;width:1px;height:1px;opacity:0;font-size:16px;";
+    document.body.appendChild(ta);
+    var ok = false;
+    try {
+      ta.focus();
+      ta.select();
+      ta.setSelectionRange(0, text.length);
+      ok = document.execCommand("copy");
+    } catch (e) { ok = false; }
+    ta.remove();
+    var sel = window.getSelection && window.getSelection();
+    if (sel) sel.removeAllRanges();
+    return ok;
+  }
   $("carnet-open").addEventListener("click", function () {
-    markCarnet();
     var text = carnetText();
-    var w = window.open(CARNET_URL, "_blank");
-    var done = function (ok) { toast(ok ? "📋 Résultats copiés : colle-les dans ta séance du carnet." : "Copie impossible : utilise « Je n'ai pas ma tablette ».", !ok); };
-    if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(text).then(function () { done(true); }, function () { done(false); });
-    else done(false);
-    if (!w) location.href = CARNET_URL;
+    /* IMPORTANT : copier AVANT d'ouvrir le carnet. Sur iPad, dès que le carnet s'ouvre,
+       cette page perd le focus et Safari refuse la copie (le presse-papiers restait vide). */
+    var ok = copySync(text);
+    var api = !!(navigator.clipboard && navigator.clipboard.writeText);
+    if (api) { try { navigator.clipboard.writeText(text).catch(function () {}); } catch (e) {} }
+    if (!ok && !api) {
+      toast("Copie impossible : utilise « Je n'ai pas ma tablette ».", true);
+      return;
+    }
+    markCarnet();
+    toast("📋 Résultats copiés : colle-les dans ta séance du carnet.");
     closeDialog("carnet");
+    var w = window.open(CARNET_URL, "_blank");
+    if (!w) location.href = CARNET_URL;
   });
   $("carnet-file").addEventListener("click", function () {
     markCarnet();
