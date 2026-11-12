@@ -2,6 +2,7 @@
  * Codes ScanProf (EXO_CODES) : ne jamais changer un code existant.
  * Chaque niveau : n, label, expected (repère en 1 min), tips (consignes).
  * image : fiche illustrée (img/…) ; null = fiche texte uniquement.
+ * hidden : true = exercice retiré des listes (les anciens résultats restent lisibles).
  */
 (function () {
   var FAMILIES = [
@@ -178,7 +179,7 @@
       ],
     },
     {
-      id: "fire-hydrants", name: "Fire hydrants", family: "bas", image: "img/fire-hydrants-illustration.png",
+      id: "fire-hydrants", name: "Fire hydrants", family: "bas", image: "img/fire-hydrants.jpg", hidden: true, // masqué : retiré des listes, gardé pour les anciens résultats
       levels: [
         { n: 1, label: "Classique", expected: 24, tips: ["Lever le genou sur le côté jusqu'à la hauteur de la hanche.", "Changer de côté à mi-temps."] },
         { n: 2, label: "Pause 1 seconde en haut", expected: 18, tips: ["Tenir 1 seconde genou levé.", "Changer de côté à mi-temps."] },
