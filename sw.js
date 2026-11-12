@@ -1,6 +1,6 @@
 /* Cross Training v2 — mode hors-ligne (réseau d'abord, sinon cache).
  * Augmenter VERSION à chaque mise en ligne. */
-const VERSION = "crosstraining-v2-2026-11-12c";
+const VERSION = "crosstraining-v2-2026-11-12d";
 const PREFIX = "crosstraining-v2-";
 const FILES = ["./", "index.html", "app.css", "app.js", "data.js", "lib/qrcode.js", "lib/jsQR.js", "manifest.webmanifest", "icons/icon-192.png", "icons/icon-512.png", "icons/apple-touch-icon.png",
   "img/burpees.jpg", "img/crunch.jpg", "img/dips.jpg", "img/fentes.jpg", "img/jumping-jack.jpg", "img/mountain.jpg",
