@@ -31,7 +31,7 @@
   var EXERCISES = [
     /* ===================== CARDIO ===================== */
     {
-      id: "burpees", name: "Burpees", family: "cardio", image: "img/burpees.jpg",
+      id: "burpees", name: "Burpees", family: "cardio", image: "img/burpees-fiche.jpg",
       levels: [
         { n: 1, label: "Burpees décomposés", expected: 12, tips: ["Reculer les jambes une par une en planche.", "Revenir une jambe après l'autre.", "Se relever sans saut."] },
         { n: 2, label: "Burpees complets", expected: 16, tips: ["Reculer les jambes en sautant en planche.", "Ramener les pieds en sautant vers les mains.", "Finir par un saut, bras au-dessus de la tête."] },
@@ -39,7 +39,7 @@
       ],
     },
     {
-      id: "jumping-jack", name: "Jumping jack", family: "cardio", image: "img/jumping-jack.jpg",
+      id: "jumping-jack", name: "Jumping jack", family: "cardio", image: "img/jumping-jack-fiche.jpg",
       levels: [
         { n: 1, label: "Step jack (sans saut)", expected: 20, tips: ["Pas sur le côté en levant les bras.", "Revenir au centre.", "Alterner droite / gauche."] },
         { n: 2, label: "Jumping jack", expected: 30, tips: ["Sauter pieds écartés en levant les bras.", "Mains qui se touchent au-dessus de la tête.", "Revenir en sautant."] },
@@ -47,7 +47,7 @@
       ],
     },
     {
-      id: "mountain", name: "Mountain climbers", family: "cardio", image: "img/mountain.jpg",
+      id: "mountain", name: "Mountain climbers", family: "cardio", image: "img/mountain-fiche.jpg",
       levels: [
         { n: 1, label: "Mains surélevées", expected: 18, tips: ["Mains sur un banc ou un plinth.", "Ramener une jambe après l'autre vers la poitrine.", "Corps droit."] },
         { n: 2, label: "Classique", expected: 26, tips: ["Mains au sol.", "Ramener les genoux en alternance, rythme rapide.", "Rester aligné et gainé."] },
@@ -55,7 +55,7 @@
       ],
     },
     {
-      id: "saut", name: "Saut", family: "cardio", image: "img/saut.jpg",
+      id: "saut", name: "Montées de genoux", family: "cardio", image: "img/saut-fiche.jpg",
       levels: [
         { n: 1, label: "Décomposé (basse intensité)", expected: 20, tips: ["Lever les genoux en marchant sur place.", "Alterner droite / gauche.", "Sans saut ni impact."] },
         { n: 2, label: "Continu (explosif)", expected: 30, tips: ["Sauter d'un pied sur l'autre en montant les genoux vite et haut.", "Alterner droite / gauche.", "Intensité cardio."] },
@@ -87,7 +87,7 @@
 
     /* ===================== HAUT DU CORPS ===================== */
     {
-      id: "pompes", name: "Pompes", family: "haut", image: "img/pompes.jpg",
+      id: "pompes", name: "Pompes", family: "haut", image: "img/pompes-fiche.jpg",
       levels: [
         { n: 1, label: "Plan incliné", expected: 12, tips: ["Mains surélevées (banc, mur).", "Corps droit, amplitude réduite.", "Idéal pour débuter."] },
         { n: 2, label: "Classiques", expected: 15, tips: ["Mains au sol, largeur des épaules.", "Corps droit, descente contrôlée.", "Poitrine près du sol."] },
@@ -95,7 +95,7 @@
       ],
     },
     {
-      id: "dips", name: "Triceps dips", family: "haut", image: "img/dips.jpg",
+      id: "dips", name: "Triceps dips", family: "haut", image: "img/dips-fiche.jpg",
       levels: [
         { n: 1, label: "Jambes fléchies", expected: 10, tips: ["Pieds proches, genoux fléchis.", "Idéal pour débuter."] },
         { n: 2, label: "Jambes tendues", expected: 14, tips: ["Jambes tendues, talons au sol.", "Charge plus importante sur les bras."] },
@@ -103,7 +103,7 @@
       ],
     },
     {
-      id: "pompe-diamant", name: "Pompe diamant", family: "haut", image: "img/pompe-diamant.jpg",
+      id: "pompe-diamant", name: "Pompe diamant", family: "haut", image: "img/pompe-diamant-fiche.jpg",
       levels: [
         { n: 1, label: "Sur genoux", expected: 10, tips: ["Genoux au sol, corps droit des genoux à la tête.", "Mains en losange sous la poitrine."] },
         { n: 2, label: "Classique", expected: 14, tips: ["Sur les pieds, corps gainé.", "Poitrine jusqu'aux mains."] },
@@ -141,7 +141,7 @@
 
     /* ===================== BAS DU CORPS ===================== */
     {
-      id: "squat", name: "Squat", family: "bas", image: "img/squat.jpg",
+      id: "squat", name: "Squat", family: "bas", image: "img/squat-fiche.jpg",
       levels: [
         { n: 1, label: "Squat avec chaise", expected: 15, tips: ["Toucher la chaise avec les fesses, puis remonter.", "Amplitude réduite.", "Idéal pour apprendre le mouvement."] },
         { n: 2, label: "Squat classique", expected: 18, tips: ["Sans appui.", "Amplitude complète.", "Mouvement contrôlé."] },
@@ -149,7 +149,7 @@
       ],
     },
     {
-      id: "fentes", name: "Fentes", family: "bas", image: "img/fentes.jpg",
+      id: "fentes", name: "Fentes", family: "bas", image: "img/fentes-fiche.jpg",
       levels: [
         { n: 1, label: "Fente avant (même jambe)", expected: 14, tips: ["Pas avant fixe.", "Descente contrôlée.", "Changer de jambe à mi-temps."] },
         { n: 2, label: "Fentes alternées", expected: 18, tips: ["Alterner jambe droite / gauche.", "Amplitude complète."] },
@@ -157,10 +157,10 @@
       ],
     },
     {
-      id: "pont-fessier", name: "Pont fessier", family: "bas", image: "img/pont-fessier.jpg",
+      id: "pont-fessier", name: "Pont fessier", family: "bas", image: "img/pont-fessier-fiche.jpg",
       levels: [
         { n: 1, label: "Classique", expected: 18, tips: ["Montée et descente contrôlées."] },
-        { n: 2, label: "Pause 1 seconde", expected: 24, tips: ["Tenir 1 seconde en haut, fessiers serrés."] },
+        { n: 2, label: "Pause 1 seconde", expected: 16, tips: ["Tenir 1 seconde en haut, fessiers serrés."] },
         { n: 3, label: "Sur 1 jambe", expected: 12, tips: ["Une jambe tendue en l'air.", "Pousser sur le talon de la jambe d'appui.", "Changer de jambe à mi-temps."] },
       ],
     },
@@ -196,7 +196,7 @@
 
     /* ===================== GAINAGE ===================== */
     {
-      id: "rameur", name: "Rameur au sol", family: "gainage", image: "img/rameur.jpg",
+      id: "rameur", name: "Rameur au sol", family: "gainage", image: "img/rameur-fiche.jpg",
       levels: [
         { n: 1, label: "Statique", expected: 20, tips: ["Position tenue, jambes fléchies, pieds décollés.", "Petits mouvements de jambes contrôlés."] },
         { n: 2, label: "Dynamique", expected: 26, tips: ["Tendre et ramener les jambes en continu.", "Buste contrôlé."] },
@@ -204,15 +204,15 @@
       ],
     },
     {
-      id: "crunch", name: "Crunch", family: "gainage", image: "img/crunch.jpg",
+      id: "crunch", name: "Crunch", family: "gainage", image: "img/crunch-fiche.jpg",
       levels: [
-        { n: 1, label: "Crunch classique", expected: 18, tips: ["Monter les épaules seulement.", "Mouvement court et contrôlé."] },
-        { n: 2, label: "Sit-up & twist", expected: 22, tips: ["Montée complète du dos.", "Rotation du buste en haut du mouvement."] },
+        { n: 1, label: "Crunch classique", expected: 22, tips: ["Monter les épaules seulement.", "Mouvement court et contrôlé."] },
+        { n: 2, label: "Sit-up & twist", expected: 18, tips: ["Montée complète du dos.", "Rotation du buste en haut du mouvement."] },
         { n: 3, label: "Crunch jambes en l'air", expected: 18, tips: ["Jambes tendues à la verticale.", "Monter les mains vers les pieds."] },
       ],
     },
     {
-      id: "planche-touches-epaule", name: "Planche touches épaules", family: "gainage", image: "img/planche-touches-epaule.jpg",
+      id: "planche-touches-epaule", name: "Planche touches épaules", family: "gainage", image: "img/planche-touches-epaule-fiche.jpg",
       levels: [
         { n: 1, label: "Sur genoux", expected: 20, tips: ["Genoux au sol, corps aligné.", "Toucher l'épaule opposée."] },
         { n: 2, label: "Classique", expected: 30, tips: ["Sur les pieds, bassin stable.", "Toucher l'épaule opposée."] },
@@ -256,7 +256,7 @@
       criteria: ["Debout, pieds à la largeur des épaules.", "Descendre en squat et poser les paumes des mains au sol devant les pieds.", "Lancer les jambes vers l'arrière pour arriver en position de planche.", "Ramener les pieds vers les mains en sautant, talons au sol.", "Sauter vers le haut, corps droit, jambes tendues, mains au-dessus de la tête."],
       safety: ["Corps gainé en planche, en squat et pendant le saut.", "Mains à la largeur des épaules (ni trop loin devant, ni trop écartées).", "Genoux légèrement orientés vers l'extérieur pendant le squat."],
       muscles: ["Deltoïdes", "Pectoraux et triceps", "Grand droit (abdominaux)", "Quadriceps et fessiers"],
-      stretches: [STRETCH.cobra, "Pectoraux et épaules : à genoux, mains jointes dans le dos, ouvrir la poitrine."],
+      stretches: [STRETCH.cobra, STRETCH.pecto],
     },
     "jumping-jack": {
       subtitle: "Cardio et coordination",
@@ -273,7 +273,7 @@
       stretches: [STRETCH.psoas, STRETCH.mollet],
     },
     "saut": {
-      subtitle: "Cardio : montées de genoux",
+      subtitle: "Cardio",
       criteria: ["Debout, lever un genou vers la poitrine en alternant droite et gauche.", "Monter les genoux au moins à hauteur de la ceinture.", "Garder un rythme rapide, dos droit et abdominaux gainés."],
       safety: ["Lever le genou avec la cuisse, sans tirer sur le bas du dos.", "Dos droit et abdominaux gainés, sans se cambrer.", "Amorti sur l'avant du pied, jamais sur le talon."],
       muscles: ["Quadriceps", "Fléchisseurs de hanche", "Abdominaux", "Mollets"],
@@ -351,7 +351,7 @@
     },
     "squat": {
       subtitle: "Renforcement des quadriceps, des fessiers et des ischio-jambiers",
-      criteria: ["Debout, pieds un peu plus écartés que la largeur du bassin.", "Poids du corps sur les talons.", "Pousser les fesses vers l'arrière, comme pour s'asseoir sur une chaise.", "Descendre dos droit jusqu'aux cuisses parallèles au sol si possible.", "Remonter en poussant dans les talons."],
+      criteria: ["Debout, pieds un peu plus écartés que la largeur du bassin.", "Poids du corps réparti sur tout le pied.", "Pousser les fesses vers l'arrière, comme pour s'asseoir sur une chaise.", "Descendre dos droit jusqu'aux cuisses parallèles au sol si possible.", "Remonter en poussant sur tout le pied."],
       safety: ["Buste droit, regard vers l'avant.", "Genoux dans l'axe des pieds.", "Talons toujours au sol.", "Descente contrôlée, bras devant pour l'équilibre."],
       muscles: ["Quadriceps", "Fessiers", "Ischio-jambiers", "Gainage (abdominaux, lombaires)"],
       stretches: [STRETCH.quadri, STRETCH.fessier],
@@ -407,7 +407,7 @@
     },
     "crunch": {
       subtitle: "Renforcement des abdominaux (grand droit, transverse, obliques)",
-      criteria: ["Allongé sur le dos, pieds à plat, genoux fléchis.", "Contracter les abdominaux pour monter le buste vers les genoux.", "Menton éloigné de la poitrine, sans tirer sur la nuque.", "Redescendre en déroulant le dos.", "Garder les abdominaux engagés à la montée comme à la descente."],
+      criteria: ["Allongé sur le dos, pieds à plat, genoux fléchis.", "Contracter les abdominaux pour décoller les épaules du sol.", "Menton éloigné de la poitrine, sans tirer sur la nuque.", "Redescendre lentement jusqu'à reposer les épaules.", "Garder les abdominaux engagés à la montée comme à la descente."],
       safety: ["Ne pas tirer sur la nuque avec les mains.", "Menton dégagé (un poing entre le menton et la poitrine).", "Bas du dos en contact avec le sol."],
       muscles: ["Grand droit", "Transverse", "Obliques"],
       stretches: [STRETCH.cobra, STRETCH.oblique],
