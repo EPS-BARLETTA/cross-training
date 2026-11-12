@@ -504,7 +504,7 @@
       '</span><span class="cover-tag">Fiche texte</span></span>';
   }
   function renderGrid(which) {
-    var list = EXERCISES.filter(function (e) { return filters[which] === "all" || e.family === filters[which]; });
+    var list = EXERCISES.filter(function (e) { return !e.hidden && (filters[which] === "all" || e.family === filters[which]); });
     $(which + "-grid").innerHTML = list.map(function (e) {
       var t = state.seance.tests[e.id], r = state.records[e.id];
       var extra = which === "train"
@@ -810,7 +810,7 @@
     return lv;
   }
   function catalogue(famId) {
-    return EXERCISES.filter(function (e) { return e.family === famId && usableLevels(e.id).length; });
+    return EXERCISES.filter(function (e) { return e.family === famId && usableLevels(e.id).length && !(e.hidden && !testedLevels(e.id).length); });
   }
   function sanitizeCfg() {
     FAMILIES.forEach(function (f) {
