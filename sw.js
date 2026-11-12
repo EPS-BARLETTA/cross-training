@@ -1,13 +1,13 @@
 /* Cross Training v2 — mode hors-ligne (réseau d'abord, sinon cache).
  * Augmenter VERSION à chaque mise en ligne. */
-const VERSION = "crosstraining-v2-2026-11-12g";
+const VERSION = "crosstraining-v2-2026-11-12h";
 const PREFIX = "crosstraining-v2-";
 const FILES = ["./", "index.html", "app.css", "app.js", "data.js", "lib/qrcode.js", "lib/jsQR.js", "manifest.webmanifest", "icons/icon-192.png", "icons/icon-512.png", "icons/apple-touch-icon.png",
   "img/burpees.jpg", "img/crunch.jpg", "img/dips.jpg", "img/fentes.jpg", "img/jumping-jack.jpg", "img/mountain.jpg",
   "img/planche-touches-epaule.jpg", "img/pompe-diamant.jpg", "img/pompes.jpg", "img/pont-fessier.jpg", "img/rameur.jpg",
-  "img/saut.jpg", "img/squat.jpg", "img/talons-fesses.jpg",
-  "img/patineurs-illustration.png", "img/marche-ours.jpg", "img/pompes-spiderman-illustration.png", "img/pompes-piquees-illustration.png", "img/inchworms-illustration.png",
-  "img/planche-dynamique-illustration.png", "img/fentes-laterales.jpg", "img/squats-sumo-illustration.png", "img/fire-hydrants.jpg", "img/mollets-illustration.png",
+  "img/saut.jpg", "img/squat.jpg", "img/talons-fesses-illustration.png",
+  "img/patineurs-illustration.png", "img/marche-ours-illustration.png", "img/pompes-spiderman-illustration.png", "img/pompes-piquees-illustration.png", "img/inchworms-illustration.png",
+  "img/planche-dynamique-illustration.png", "img/fentes-laterales-illustration.png", "img/squats-sumo-illustration.png", "img/fire-hydrants-illustration.png", "img/mollets-illustration.png",
   "img/v-ups-illustration.png", "img/superman.jpg", "img/bicyclette-illustration.png", "img/planche-twist-illustration.png"];
 
 self.addEventListener("install", (event) => {

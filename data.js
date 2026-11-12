@@ -62,7 +62,7 @@
       ],
     },
     {
-      id: "talons-fesses", name: "Talons-fesses", family: "cardio", image: "img/talons-fesses.jpg",
+      id: "talons-fesses", name: "Talons-fesses", family: "cardio", image: "img/talons-fesses-illustration.png",
       levels: [
         { n: 1, label: "Marchés", expected: 30, tips: ["Sur place, sans saut.", "Alterner droite / gauche.", "Rythme modéré."] },
         { n: 2, label: "Courus", expected: 40, tips: ["Petits sauts d'un pied sur l'autre.", "Le talon touche les fesses.", "Rythme rapide."] },
@@ -77,7 +77,7 @@
       ],
     },
     {
-      id: "marche-ours", name: "Marche de l'ours", family: "cardio", image: "img/marche-ours.jpg",
+      id: "marche-ours", name: "Marche de l'ours", family: "cardio", image: "img/marche-ours-illustration.png",
       levels: [
         { n: 1, label: "Sur place", expected: 30, tips: ["Genoux décollés de quelques centimètres.", "Lever une main et le pied opposé, puis l'inverse.", "1 pas = 1 répétition."] },
         { n: 2, label: "Avant-arrière", expected: 24, tips: ["4 pas en avant, 4 pas en arrière.", "Genoux toujours décollés.", "1 pas = 1 répétition."] },
@@ -164,7 +164,7 @@
       ],
     },
     {
-      id: "fentes-laterales", name: "Fentes latérales", family: "bas", image: "img/fentes-laterales.jpg",
+      id: "fentes-laterales", name: "Fentes latérales", family: "bas", image: "img/fentes-laterales-illustration.png",
       levels: [
         { n: 1, label: "Amplitude réduite", expected: 16, tips: ["Petit pas sur le côté.", "Descente partielle."] },
         { n: 2, label: "Complètes", expected: 20, tips: ["Grand pas sur le côté.", "Cuisse fléchie proche de l'horizontale."] },
@@ -178,7 +178,7 @@
       ],
     },
     {
-      id: "fire-hydrants", name: "Fire hydrants", family: "bas", image: "img/fire-hydrants.jpg",
+      id: "fire-hydrants", name: "Fire hydrants", family: "bas", image: "img/fire-hydrants-illustration.png",
       levels: [
         { n: 1, label: "Classique", expected: 24, tips: ["Lever le genou sur le côté jusqu'à la hauteur de la hanche.", "Changer de côté à mi-temps."] },
         { n: 2, label: "Pause 1 seconde en haut", expected: 18, tips: ["Tenir 1 seconde genou levé.", "Changer de côté à mi-temps."] },
