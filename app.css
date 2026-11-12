@@ -240,13 +240,7 @@ body.dlg-fallback-open::after { content: ""; position: fixed; inset: 0; backgrou
 .ex-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 12px; }
 .ex-card { position: relative; display: flex; flex-direction: column; text-align: left; padding: 0; overflow: hidden; border-radius: 16px; cursor: pointer;
   border: 2px solid var(--fam, rgba(255,255,255,.15)); background: rgba(255,255,255,.045); color: var(--text); font: inherit; touch-action: manipulation; }
-.exercise-preview { width: 100%; aspect-ratio: 16 / 9; display: flex; align-items: center; justify-content: center; background: #fff; overflow: hidden; padding: 12px; border-bottom: 1px solid rgba(255,255,255,.1); }
-.exercise-preview-art { display: block; width: 100%; height: 100%; overflow: hidden; }
-.ex-card .level-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 7px; }
-.ex-card .level-chip { display: inline-flex; align-items: baseline; gap: 5px; max-width: 100%; padding: 5px 8px; border: 1px solid rgba(255,255,255,.14); border-radius: 8px; background: rgba(255,255,255,.045); color: #dfe5f2; font-size: .78rem; line-height: 1.35; }
-.ex-card .level-chip strong { color: var(--fam); flex-shrink: 0; }
-.ex-card:focus-visible { outline: 3px solid #fff; outline-offset: 3px; }
-@media (max-width: 480px) { .exercise-preview { padding: 8px; } }
+.ex-card img { width: 100%; aspect-ratio: 16 / 9; object-fit: cover; object-position: top; background: #fff; display: block; }
 .ex-card .body { padding: 10px 12px 12px; display: grid; gap: 3px; }
 .ex-card .name { font-weight: 900; font-size: 1.08rem; }
 .ex-card .fam { font-size: 0.78rem; font-weight: 800; text-transform: uppercase; letter-spacing: .5px; color: var(--fam); }

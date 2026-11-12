@@ -498,133 +498,8 @@
     return p.join(" · ");
   }
   var FAM_ICON = { cardio: "❤️", haut: "💪", bas: "🦵", gainage: "🧱" };
-  // Normalized coordinates in each 900 × 1350 exercise sheet.
-  // The nested SVG clips the illustration without changing the full-size sheet.
-  var PREVIEW_CROPS = {
-  "burpees": [
-    12,
-    190,
-    354,
-    280
-  ],
-  "jumping-jack": [
-    15,
-    205,
-    344,
-    228
-  ],
-  "mountain": [
-    25,
-    245,
-    320,
-    160
-  ],
-  "saut": [
-    15,
-    190,
-    340,
-    264
-  ],
-  "dips": [
-    25,
-    195,
-    325,
-    245
-  ],
-  "pompes": [
-    30,
-    185,
-    325,
-    285
-  ],
-  "pompe-diamant": [
-    115,
-    210,
-    700,
-    180
-  ],
-  "fentes": [
-    105,
-    215,
-    568,
-    225
-  ],
-  "squat": [
-    125,
-    210,
-    470,
-    240
-  ],
-  "pont-fessier": [
-    120,
-    210,
-    590,
-    140
-  ],
-  "rameur": [
-    20,
-    235,
-    850,
-    170
-  ],
-  "crunch": [
-    20,
-    220,
-    860,
-    180
-  ],
-  "planche-touches-epaule": [
-    28,
-    220,
-    840,
-    200
-  ],
-  "superman": [
-    25,
-    200,
-    375,
-    250
-  ],
-  "talons-fesses": [
-    20,
-    200,
-    315,
-    250
-  ],
-  "patineurs": [
-    20,
-    200,
-    315,
-    250
-  ],
-  "fentes-laterales": [
-    20,
-    200,
-    315,
-    250
-  ],
-  "mollets": [
-    20,
-    200,
-    315,
-    250
-  ],
-  "squats-sumo": [
-    20,
-    200,
-    315,
-    250
-  ]
-};
   function cover(e) {
-    if (e.image) {
-      var c = PREVIEW_CROPS[e.id] || [30, 215, 355, 230];
-      return '<span class="exercise-preview" aria-hidden="true">' +
-        '<svg class="exercise-preview-art" viewBox="0 0 ' + c[2] + ' ' + c[3] + '" focusable="false">' +
-        '<svg width="' + c[2] + '" height="' + c[3] + '" viewBox="' + c.join(" ") + '" overflow="hidden">' +
-        '<image href="' + esc(e.image) + '" width="900" height="1350" preserveAspectRatio="none"></image>' +
-        '</svg></svg></span>';
-    }
+    if (e.image) return '<img src="' + e.image + '" alt="" loading="lazy">';
     return '<span class="cover f-' + e.family + '"><span class="cover-ico">' + FAM_ICON[e.family] + '</span><span class="cover-name">' + esc(e.name) +
       '</span><span class="cover-tag">Fiche texte</span></span>';
   }
@@ -640,9 +515,7 @@
         (which === "train" && t ? '<span class="done">✓ testé</span>' : "") +
         cover(e) + '<span class="body">' +
         '<span class="fam">' + esc(FAM[e.family].label) + '</span><span class="name">' + esc(e.name) + "</span>" +
-        '<span class="level-chips">' + e.levels.map(function (l) {
-          return '<span class="level-chip"><strong>N' + l.n + '</strong><span>' + esc(l.label) + '</span></span>';
-        }).join("") + "</span>" + extra + "</span></button>";
+        '<span class="lv">' + e.levels.map(function (l) { return "N" + l.n + " " + esc(l.label); }).join(" · ") + "</span>" + extra + "</span></button>";
     }).join("");
   }
   $("train-grid").addEventListener("click", function (e) { var b = e.target.closest("[data-ex]"); if (b) openTest(b.dataset.ex); });
