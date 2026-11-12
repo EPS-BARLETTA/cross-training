@@ -69,7 +69,7 @@
       ],
     },
     {
-      id: "patineurs", name: "Patineurs", family: "cardio", image: "img/patineurs.jpg",
+      id: "patineurs", name: "Patineurs", family: "cardio", image: "img/patineurs-illustration.png",
       levels: [
         { n: 1, label: "Pas chassés", expected: 24, tips: ["Grand pas sur le côté, sans saut.", "Toucher le sol derrière avec la pointe du pied libre."] },
         { n: 2, label: "Sautés", expected: 30, tips: ["Sauter d'un pied sur l'autre.", "Le pied libre ne touche pas le sol."] },
@@ -110,28 +110,28 @@
       ],
     },
     {
-      id: "pompes-spiderman", name: "Pompes spiderman", family: "haut", image: "img/pompes-spiderman.jpg",
+      id: "pompes-spiderman", name: "Pompes spiderman", family: "haut", image: "img/pompes-spiderman-illustration.png",
       levels: [
         { n: 1, label: "Sur genoux", expected: 10, tips: ["Pompe sur les genoux.", "Après chaque pompe, ramener un genou vers le coude du même côté."] },
         { n: 2, label: "Complètes", expected: 10, tips: ["Pompe sur les pieds.", "Pendant la descente, genou vers le coude du même côté.", "Alterner droite / gauche."] },
       ],
     },
     {
-      id: "pompes-piquees", name: "Pompes piquées", family: "haut", image: "img/pompes-piquees.jpg",
+      id: "pompes-piquees", name: "Pompes piquées", family: "haut", image: "img/pompes-piquees-illustration.png",
       levels: [
         { n: 1, label: "Pieds au sol", expected: 10, tips: ["Position en « V » inversé.", "Tête vers le sol entre les mains."] },
         { n: 2, label: "Pieds surélevés", expected: 8, tips: ["Pieds sur un banc, corps plus vertical.", "Descente lente."] },
       ],
     },
     {
-      id: "inchworms", name: "Inchworms", family: "haut", image: "img/inchworms.jpg",
+      id: "inchworms", name: "Inchworms", family: "haut", image: "img/inchworms-illustration.png",
       levels: [
         { n: 1, label: "Sans pompe", expected: 8, tips: ["Marcher avec les mains jusqu'à la planche, puis revenir.", "1 aller-retour = 1 répétition."] },
         { n: 2, label: "Avec 1 pompe", expected: 6, tips: ["Une pompe complète en position de planche.", "1 aller-retour = 1 répétition."] },
       ],
     },
     {
-      id: "planche-dynamique", name: "Planche dynamique", family: "haut", image: "img/planche-dynamique.jpg",
+      id: "planche-dynamique", name: "Planche dynamique", family: "haut", image: "img/planche-dynamique-illustration.png",
       levels: [
         { n: 1, label: "Sur genoux", expected: 12, tips: ["Genoux au sol.", "Passer des avant-bras aux mains, puis revenir."] },
         { n: 2, label: "Complète", expected: 10, tips: ["Sur les pieds, corps gainé.", "Changer de bras de départ à chaque répétition."] },
@@ -171,7 +171,7 @@
       ],
     },
     {
-      id: "squats-sumo", name: "Squats sumo", family: "bas", image: "img/squats-sumo.jpg",
+      id: "squats-sumo", name: "Squats sumo", family: "bas", image: "img/squats-sumo-illustration.png",
       levels: [
         { n: 1, label: "Classique", expected: 18, tips: ["Pieds très écartés, pointes vers l'extérieur.", "Descente contrôlée."] },
         { n: 2, label: "Sautés", expected: 14, tips: ["Squat sumo, puis saut vers le haut.", "Réception amortie pieds écartés."] },
@@ -185,7 +185,7 @@
       ],
     },
     {
-      id: "mollets", name: "Extensions des mollets", family: "bas", image: "img/mollets.jpg",
+      id: "mollets", name: "Extensions des mollets", family: "bas", image: "img/mollets-illustration.png",
       levels: [
         { n: 1, label: "2 pieds", expected: 30, tips: ["Monter sur la pointe des pieds, redescendre lentement."] },
         { n: 2, label: "1 pied", expected: 20, tips: ["Sur un seul pied, la main contre le mur.", "Changer de pied à mi-temps."] },
@@ -219,7 +219,7 @@
       ],
     },
     {
-      id: "v-ups", name: "V-ups", family: "gainage", image: "img/v-ups.jpg",
+      id: "v-ups", name: "V-ups", family: "gainage", image: "img/v-ups-illustration.png",
       levels: [
         { n: 1, label: "Alternés", expected: 16, tips: ["Monter le buste et une seule jambe tendue.", "Alterner les jambes."] },
         { n: 2, label: "Complets", expected: 12, tips: ["Monter le buste et les deux jambes en même temps.", "Toucher les pieds en haut."] },
@@ -233,14 +233,14 @@
       ],
     },
     {
-      id: "bicyclette", name: "Abdos bicyclette", family: "gainage", image: "img/bicyclette.jpg",
+      id: "bicyclette", name: "Abdos bicyclette", family: "gainage", image: "img/bicyclette-illustration.png",
       levels: [
         { n: 1, label: "Lents", expected: 20, tips: ["Pause d'une seconde à chaque rotation."] },
         { n: 2, label: "Rapides", expected: 30, tips: ["Rythme rapide, sans perdre le contrôle."] },
       ],
     },
     {
-      id: "planche-twist", name: "Planche twist", family: "gainage", image: "img/planche-twist.jpg",
+      id: "planche-twist", name: "Planche twist", family: "gainage", image: "img/planche-twist-illustration.png",
       levels: [
         { n: 1, label: "Sur genoux", expected: 20, tips: ["Planche sur les avant-bras, genoux au sol.", "Pivoter le bassin d'un côté puis de l'autre."] },
         { n: 2, label: "Complète", expected: 24, tips: ["Planche sur les avant-bras et les pieds.", "Hanche vers le sol sans le toucher."] },
